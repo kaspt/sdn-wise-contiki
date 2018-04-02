@@ -27,6 +27,11 @@
  * @{
  */
 #include <stdio.h>
+
+#include "dev/battery-sensor.h"
+#include "dev/sht11/sht11-sensor.h"
+#include "dev/light-sensor.h"
+
 #include "packet-buffer.h"
 #include "packet-creator.h"
 #include "node-conf.h"
@@ -34,17 +39,7 @@
 #include "neighbor-table.h"
 #include "sdn-wise.h"
 
-#if BATTERY_ENABLED
-#include "dev/battery-sensor.h"
-#endif
-
-#ifdef X_NUCLEO_IKS01A1
-#include "dev/temperature-sensor.h"
-#include "dev/humidity-sensor.h"
-#include "dev/pressure-sensor.h"
-#include "dev/sensor-common.h"
-#define NO_OF_SENSORS 3
-#endif /*X_NUCLEO_IKS01A1*/
+#define NO_OF_SENSORS 4
 
 #ifndef SDN_WISE_DEBUG
 #define SDN_WISE_DEBUG 0
@@ -55,35 +50,46 @@
 #define PRINTF(...)
 #endif
 /*----------------------------------------------------------------------------*/
-packet_t* 
+packet_t*
 create_beacon(void)
 {
   packet_t* p = create_packet_empty();
   if (p != NULL){
     p->header.net = conf.my_net;
     set_broadcast_address(&(p->header.dst));
-    p->header.src = conf.my_address; 
+    p->header.src = conf.my_address;
     p->header.typ = BEACON;
     p->header.nxh = conf.sink_address;
-  
+
     set_payload_at(p, BEACON_HOPS_INDEX, conf.hops_from_sink);
 
-#if BATTERY_ENABLED           
     SENSORS_ACTIVATE(battery_sensor);
-    set_payload_at(p, BEACON_BATT_INDEX, battery_sensor.value(0));
+    int battery_level = battery_sensor.value(0);
+    set_payload_at(p, BEACON_BATT_INDEX, (uint8_t)(battery_level/30));
     SENSORS_DEACTIVATE(battery_sensor);
-#else
-    set_payload_at(p, BEACON_BATT_INDEX, 0xff);
-#endif
+
   }
   return p;
 }
 /*----------------------------------------------------------------------------*/
-packet_t* 
+packet_t*
+create_data(uint8_t* payload, uint8_t len)
+{
+  packet_t* p = create_packet_payload(
+    conf.my_net,
+    &conf.sink_address,
+    &conf.my_address,
+    DATA,
+    &conf.nxh_vs_sink,
+    payload,
+    len);
+  return p;
+}
+/*----------------------------------------------------------------------------*/
 create_data(uint8_t count)
 {
-#ifdef X_NUCLEO_IKS01A1  
-    int i = 0; 
+#ifdef X_NUCLEO_IKS01A1
+    int i = 0;
     uint8_t sensor_values[sizeof(int)*NO_OF_SENSORS];
     int* sensor_values_ptr = &sensor_values;
     SENSORS_ACTIVATE(temperature_sensor);
@@ -108,7 +114,7 @@ create_data(uint8_t count)
       p->header.src = conf.my_address;
       p->header.typ = DATA;
       p->header.nxh = conf.nxh_vs_sink;
-#ifdef X_NUCLEO_IKS01A1 
+#ifdef X_NUCLEO_IKS01A1
       for (i = 0; i < sizeof(int)*NO_OF_SENSORS; i++){
         set_payload_at(p, i, sensor_values[i]);
       }
@@ -120,49 +126,85 @@ create_data(uint8_t count)
   return p;
 }
 /*----------------------------------------------------------------------------*/
-packet_t* 
+packet_t*
 create_report(void)
-{  
+{
   packet_t* p = create_packet_empty();
   if (p != NULL){
     p->header.net = conf.my_net;
     p->header.dst = conf.sink_address;
-    p->header.src = conf.my_address; 
+    p->header.src = conf.my_address;
     p->header.typ = REPORT;
     p->header.nxh = conf.nxh_vs_sink;
-    
+
     set_payload_at(p, BEACON_HOPS_INDEX, conf.hops_from_sink);
-                
-#if BATTERY_ENABLED          
+
     SENSORS_ACTIVATE(battery_sensor);
-    set_payload_at(p, BEACON_BATT_INDEX, battery_sensor.value(0));
+    int battery_level = battery_sensor.value(0);
+    uint8_t battery = (battery_level*2500*2)/4096;
+    int tmp_battery_usage = (int)(0.41*battery_level - 899);
+    uint8_t battery_usage = 0;
+    if(tmp_battery_usage > 100) {
+      battery_usage = 100;
+    } else if(tmp_battery_usage < 0) {
+      battery_usage = 0;
+    } else {
+      battery_usage = (uint8_t)tmp_battery_usage;
+    }
+    set_payload_at(p, BEACON_BATT_INDEX, (uint8_t)(battery_usage));
     SENSORS_DEACTIVATE(battery_sensor);
-#else
-    set_payload_at(p, BEACON_BATT_INDEX, 0xff);
-#endif
+
+    /*
+     * Added by Jakob
+     * Add sensor Values to report
+     */
+    uint16_t sensor_values[NO_OF_SENSORS];
+    SENSORS_ACTIVATE(sht11_sensor);
+    SENSORS_ACTIVATE(light_sensor);
+    sensor_values[0] = sht11_sensor.value(SHT11_SENSOR_TEMP);
+    sensor_values[1] = sht11_sensor.value(SHT11_SENSOR_HUMIDITY);
+    sensor_values[2] = light_sensor.value(LIGHT_SENSOR_PHOTOSYNTHETIC);
+    sensor_values[3] = light_sensor.value(LIGHT_SENSOR_TOTAL_SOLAR);
+    SENSORS_DEACTIVATE(light_sensor);
+    SENSORS_DEACTIVATE(sht11_sensor);
+
+    /*
+     * Added by Jakob
+     * Copy all sensor values to the packet
+     */
+    uint8_t i = 0;
+    for(i=0; i < 2*NO_OF_SENSORS; i++) {
+      set_payload_at(p,i+1+BEACON_BATT_INDEX,((uint8_t *)(&sensor_values))[i]);
+    }
 
     fill_payload_with_neighbors(p);
+    /*
+     * Added by Jakob
+     * Reset the send statistics
+     */
+    // TODO reset
+    //reset_rx_tx_counts();
   }
   return p;
 }
 /*----------------------------------------------------------------------------*/
-packet_t* 
+packet_t*
 create_reg_proxy(void)
-{  
+{
   uint8_t payload[] = {
     48, 48, 48, 48, 48, 48, 48, 49,
      0,  1,  2,  3,  4,  5,  0,  0,
      0,  0,  0,  0,  0,  1,-64,-88,
      1, 108, 39, 6
-  }; 
+  };
 
   packet_t* p = create_packet_payload(
-    conf.my_net, 
-    &conf.sink_address, 
-    &conf.my_address, 
-    REG_PROXY, 
+    conf.my_net,
+    &conf.sink_address,
+    &conf.my_address,
+    REG_PROXY,
     &conf.nxh_vs_sink,
-    payload, 
+    payload,
     28);
   return p;
 }
@@ -170,22 +212,22 @@ create_reg_proxy(void)
 void
 create_and_send_request(packet_t* p)
 {
-  
-  uint8_t i = 0;    
-    
-  if (p->header.len < MAX_PAYLOAD_LENGTH){  
+
+  uint8_t i = 0;
+
+  if (p->header.len < MAX_PAYLOAD_LENGTH){
     packet_t* r = create_packet_empty();
     if (r != NULL){
       r->header.net = conf.my_net;
       r->header.dst = conf.sink_address;
-      r->header.src = conf.my_address; 
+      r->header.src = conf.my_address;
       r->header.typ = REQUEST;
       r->header.nxh = conf.nxh_vs_sink;
 
       uint8_t* a = (uint8_t*)p;
       set_payload_at(r, 0, conf.requests_count);
       set_payload_at(r, 1, 0);
-      set_payload_at(r, 2, 1);     
+      set_payload_at(r, 2, 1);
       for (i = 0; i < (p->header.len); ++i){
         set_payload_at(r, i+3, a[i]);
       }
@@ -193,20 +235,20 @@ create_and_send_request(packet_t* p)
     conf.requests_count++;
 
     }
-  } else {   
+  } else {
     packet_t* r1 = create_packet_empty();
     packet_t* r2 = create_packet_empty();
-    
+
     if (r1 != NULL && r2 != NULL){
       r1->header.net = conf.my_net;
       r1->header.dst = conf.sink_address;
-      r1->header.src = conf.my_address; 
+      r1->header.src = conf.my_address;
       r1->header.typ = REQUEST;
       r1->header.nxh = conf.nxh_vs_sink;
-      
+
       r2->header.net = conf.my_net;
       r2->header.dst = conf.sink_address;
-      r2->header.src = conf.my_address; 
+      r2->header.src = conf.my_address;
       r2->header.typ = REQUEST;
       r2->header.nxh = conf.nxh_vs_sink;
 
@@ -216,9 +258,9 @@ create_and_send_request(packet_t* p)
 
       set_payload_at(r2, 0, conf.requests_count);
       set_payload_at(r2, 1, 1);
-      set_payload_at(r2, 2, 2);     
-      
-      uint8_t* a = (uint8_t*)p;     
+      set_payload_at(r2, 2, 2);
+
+      uint8_t* a = (uint8_t*)p;
       for (i = 0; i < MAX_PAYLOAD_LENGTH; ++i){
         set_payload_at(r1, i+3, a[i]);
       }
@@ -239,13 +281,13 @@ create_and_send_request(packet_t* p)
       }
     }
   }
-  packet_deallocate(p); 
+  packet_deallocate(p);
 }
 /*----------------------------------------------------------------------------*/
-packet_t* 
+packet_t*
 create_config(void)
 {
-  // TODO 
+  // TODO
   return NULL;
 }
 /*----------------------------------------------------------------------------*/

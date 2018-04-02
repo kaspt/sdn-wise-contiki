@@ -30,7 +30,8 @@
 #include <string.h>
 
 #include "address.h"
-#include "node-conf.h" 
+#include "node-conf.h"
+#include "node-id.h"
 #include "net/rime/rime.h"
 
 #ifndef SDN_WISE_DEBUG
@@ -50,12 +51,12 @@
   {
 
 #if COOJA
-    conf.my_address.u8[1] = linkaddr_node_addr.u8[0]; 
+    conf.my_address.u8[1] = linkaddr_node_addr.u8[0];
     conf.my_address.u8[0] = linkaddr_node_addr.u8[1];
 #else
-    conf.my_address = get_address_from_int(_MY_ADDRESS);
+    conf.my_address = get_address_from_int(node_id);
+    linkaddr_node_addr.u8[0] = conf.my_address.u8[1];
     linkaddr_node_addr.u8[1] = conf.my_address.u8[0];
-    linkaddr_node_addr.u8[0] = conf.my_address.u8[1]; 
 #endif
     conf.requests_count = 0;
     conf.my_net = _NET;
@@ -77,7 +78,7 @@
     conf.distance_from_sink = _MAX_DISTANCE;
     conf.hops_from_sink = _PACKET_TTL;
     conf.reset_period = _RESET_PERIOD;
-#endif 
+#endif
   }
 /*----------------------------------------------------------------------------*/
   void
@@ -88,7 +89,7 @@
     PRINTF("[CFG]: - Network ID: %d\n[CFG]: - Beacon Period: %d\n[CFG]: - "
       "Report Period: %d\n[CFG]: - Rules TTL: %d\n[CFG]: - Min RSSI: "
       "%d\n[CFG]: - Packet TTL: %d\n[CFG]: - Next Hop -> Sink: ",
-      conf.my_net, conf.beacon_period, conf.report_period, 
+      conf.my_net, conf.beacon_period, conf.report_period,
       conf.rule_ttl, conf.rssi_min, conf.packet_ttl);
     print_address(&(conf.nxh_vs_sink));
     PRINTF(" (hops: %d, distance: %d)\n", conf.hops_from_sink, conf.distance_from_sink);

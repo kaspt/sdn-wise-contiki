@@ -29,10 +29,10 @@
 
 #include "contiki.h"
 #include "net/rime/rime.h"
-#include "net/linkaddr.h"  
+#include "net/linkaddr.h"
 #include "dev/watchdog.h"
 #include "dev/uart1.h"
-#include "dev/leds.h"  
+#include "dev/leds.h"
 #include "lib/list.h"
 #if CFS_ENABLED
 #include "cfs/cfs.h"
@@ -47,6 +47,14 @@
 #include "packet-creator.h"
 #include "neighbor-table.h"
 #include "node-conf.h"
+
+#if !SINK
+#include "dev/sht11/sht11-sensor.h"
+#include "dev/light-sensor.h"
+#include "dev/battery-sensor.h"
+#define NO_OF_SENSORS 5
+#endif
+#define MEASUREMENT_INTERVAL 50
 
 #define UART_BUFFER_SIZE      MAX_PACKET_LENGTH
 
@@ -83,7 +91,7 @@
   PROCESS(timer_proc, "Timer Process");
   PROCESS(beacon_timer_proc, "Beacon Timer Process");
   PROCESS(report_timer_proc, "Report Timer Process");
-  PROCESS(data_timer_proc, "Data Timer Process");
+  PROCESS(sensor_read_proc, "Sensor Read Process");
   AUTOSTART_PROCESSES(
     &main_proc,
     &rf_u_send_proc,
@@ -92,7 +100,7 @@
     &beacon_timer_proc,
     &report_timer_proc,
     &packet_handler_proc,
-    &data_timer_proc
+    &sensor_read_proc
     );
 /*----------------------------------------------------------------------------*/
   static uint8_t uart_buffer[UART_BUFFER_SIZE];
@@ -102,6 +110,8 @@
   static uint8_t count=0;
   static packet_t* p;
 #endif
+/*----------------------------------------------------------------------------*/
+  static struct etimer et;
 /*----------------------------------------------------------------------------*/
   void
   rf_unicast_send(packet_t* p)
@@ -114,7 +124,6 @@
   {
     process_post(&rf_b_send_proc, RF_B_SEND_EVENT, (process_data_t)p);
   }
-
 /*----------------------------------------------------------------------------*/
   static uint8_t
   get_packet_rssi(uint16_t raw_value)
@@ -127,7 +136,6 @@
     return (uint8_t) raw_value;
 #endif
   }
-
 /*----------------------------------------------------------------------------*/
   static void
   unicast_rx_callback(struct unicast_conn *c, const linkaddr_t *from)
@@ -163,7 +171,7 @@
       packet_t* p = get_packet_from_array(uart_buffer);
       if (p != NULL){
         p->info.rssi = 0;
-        process_post(&main_proc, UART_RECEIVE_EVENT, (process_data_t)p);  
+        process_post(&main_proc, UART_RECEIVE_EVENT, (process_data_t)p);
       }
     }
     return 0;
@@ -180,7 +188,7 @@
 /*----------------------------------------------------------------------------*/
   PROCESS_THREAD(main_proc, ev, data) {
     PROCESS_BEGIN();
-    
+
     uart1_init(BAUD2UBR(115200));       /* set the baud rate as necessary */
     uart1_set_input(uart_rx_callback);  /* set the callback function */
 
@@ -191,9 +199,17 @@
     address_list_init();
     leds_init();
 
+    print_node_conf();
 #if SINK
     print_packet_uart(create_reg_proxy());
-#endif    
+#endif
+
+#if !SINK
+    uint16_t sensor_values[sizeof(int)*NO_OF_SENSORS];
+    uint16_t rh;
+    SENSORS_ACTIVATE(sht11_sensor);
+    SENSORS_ACTIVATE(light_sensor);
+#endif
 
     while(1) {
       PROCESS_WAIT_EVENT();
@@ -204,21 +220,31 @@
       // test_neighbor_table();
       // test_packet_buffer();
       // test_address_list();
-        print_flowtable();
+      //  print_flowtable();
         print_node_conf();
         break;
-
+        case MEASUREMENT_TIMER_EVENT:
+#if !SINK
+        sensor_values[0] = (sht11_sensor.value(SHT11_SENSOR_TEMP) / 10 - 396);
+        sensor_values[1] = light_sensor.value(LIGHT_SENSOR_PHOTOSYNTHETIC)*10/7;
+        rh = sht11_sensor.value(SHT11_SENSOR_HUMIDITY);
+        sensor_values[2] = -4 + 0.0405*rh - 2.8e-6*(rh*rh);
+        sensor_values[3] = light_sensor.value(LIGHT_SENSOR_TOTAL_SOLAR);
+        sensor_values[4] = battery_sensor.value(0);
+        rf_unicast_send(create_data((uint8_t)sensor_values, sizeof(uint8_t)*NO_OF_SENSORS));
+#endif
+        break;
         case UART_RECEIVE_EVENT:
         leds_toggle(LEDS_GREEN);
         process_post(&packet_handler_proc, NEW_PACKET_EVENT, (process_data_t)data);
         break;
-
         case RF_B_RECEIVE_EVENT:
         leds_toggle(LEDS_YELLOW);
         if (!conf.is_active){
           conf.is_active = 1;
           process_post(&beacon_timer_proc, ACTIVATE_EVENT, (process_data_t)NULL);
           process_post(&report_timer_proc, ACTIVATE_EVENT, (process_data_t)NULL);
+          process_post(&sensor_read_proc, ACTIVATE_EVENT, (process_data_t)NULL);
         }
         case RF_U_RECEIVE_EVENT:
         process_post(&packet_handler_proc, NEW_PACKET_EVENT, (process_data_t)data);
@@ -230,37 +256,57 @@
 
         case RF_SEND_REPORT_EVENT:
         rf_unicast_send(create_report());
-        #if !SINK
-                if (conf.reset_period == 0){
-                  conf.distance_from_sink = _MAX_DISTANCE;
-                  conf.reset_period = _RESET_PERIOD;
-                } else {
-                  conf.reset_period--;
-                }
-        #endif
+#if !SINK
+        if (conf.reset_period == 0){
+          conf.distance_from_sink = _MAX_DISTANCE;
+          conf.reset_period = _RESET_PERIOD;
+        } else {
+          conf.reset_period--;
+        }
+#endif
         break;
 
-        case RF_SEND_DATA_EVENT:
-            #if MOBILE
-            if (conf.is_active){
-            p = create_data(count);
-                if (p != NULL){
-                    match_packet(p);
-                }
-            count++;
-               }
-       #endif
-        break;
-      } 
+       //  case RF_SEND_DATA_EVENT:
+       //      #if MOBILE
+       //      if (conf.is_active){
+       //      p = create_data(count);
+       //          if (p != NULL){
+       //              match_packet(p);
+       //          }
+       //      count++;
+       //         }
+       // #endif
+       //  break;
+      }
     }
+
+#if !SINK
+    SENSORS_DEACTIVATE(sht11_sensor);
+    SENSORS_DEACTIVATE(light_sensor);
+#endif
+    PROCESS_END();
+  }
+/*----------------------------------------------------------------------------*/
+  PROCESS_THREAD(sensor_read_proc, ev, data) {
+    PROCESS_BEGIN();
+#if !SINK
+    while(1) {
+      if (!conf.is_active){
+        PROCESS_WAIT_EVENT_UNTIL(ev == ACTIVATE_EVENT);
+      }
+      etimer_set(&et, MEASUREMENT_INTERVAL * CLOCK_SECOND);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+      process_post(&main_proc, MEASUREMENT_TIMER_EVENT, (process_data_t)NULL);
+      print_neighbor_table();
+    }
+#endif
     PROCESS_END();
   }
 /*----------------------------------------------------------------------------*/
   PROCESS_THREAD(rf_u_send_proc, ev, data) {
-  static linkaddr_t addr;
+    static linkaddr_t addr;
     PROCESS_EXITHANDLER(unicast_close(&uc);)
     PROCESS_BEGIN();
-
     unicast_open(&uc, UNICAST_CONNECTION_NUMBER, &unicast_callbacks);
     while(1) {
       PROCESS_WAIT_EVENT_UNTIL(ev == RF_U_SEND_EVENT);
@@ -282,7 +328,6 @@
             sent_size = LINKADDR_SIZE;
           } else {
             sent_size = ADDRESS_LENGTH;
-
           }
 
           for ( i=0; i<sent_size; ++i){
@@ -300,6 +345,7 @@
           print_packet_uart(p);
         }
 #endif
+        tx_count_inc(&p->header.nxh);
         packet_deallocate(p);
       }
     }
@@ -311,7 +357,6 @@
     PROCESS_BEGIN();
     broadcast_open(&bc, BROADCAST_CONNECTION_NUMBER, &broadcast_callbacks);
     while(1) {
-
       PROCESS_WAIT_EVENT_UNTIL(ev == RF_B_SEND_EVENT);
       packet_t* p = (packet_t*)data;
 
@@ -320,7 +365,7 @@
         PRINTF("[TXB]: ");
         print_packet(p);
         PRINTF("\n");
-        
+
         uint8_t* a = (uint8_t*)p;
         packetbuf_copyfrom(a,p->header.len);
         broadcast_send(&bc);
@@ -342,7 +387,7 @@
     PROCESS_END();
   }
 /*----------------------------------------------------------------------------*/
-PROCESS_THREAD(beacon_timer_proc, ev, data) {
+  PROCESS_THREAD(beacon_timer_proc, ev, data) {
     static struct etimer et;
 
     PROCESS_BEGIN();
@@ -357,11 +402,11 @@ PROCESS_THREAD(beacon_timer_proc, ev, data) {
       process_post(&main_proc, RF_SEND_BEACON_EVENT, (process_data_t)NULL);
     }
     PROCESS_END();
-}
+  }
 /*----------------------------------------------------------------------------*/
   PROCESS_THREAD(report_timer_proc, ev, data) {
     static struct etimer et;
-    
+
     PROCESS_BEGIN();
     while(1){
 #if !SINK
@@ -376,24 +421,12 @@ PROCESS_THREAD(beacon_timer_proc, ev, data) {
     PROCESS_END();
   }
 /*----------------------------------------------------------------------------*/
-  PROCESS_THREAD(data_timer_proc, ev, data) {
-    static struct etimer et;
-
-    PROCESS_BEGIN();
-    while(1){
-      etimer_set(&et, 5 * CLOCK_SECOND);
-      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-      process_post(&main_proc, RF_SEND_DATA_EVENT, (process_data_t)NULL);
-    }
-    PROCESS_END();
-  }
-
-/*----------------------------------------------------------------------------*/
   PROCESS_THREAD(packet_handler_proc, ev, data) {
     PROCESS_BEGIN();
     while(1) {
       PROCESS_WAIT_EVENT_UNTIL(ev == NEW_PACKET_EVENT);
       packet_t* p = (packet_t*)data;
+
       PRINTF("[RX ]: ");
       print_packet(p);
       PRINTF("\n");
@@ -402,3 +435,4 @@ PROCESS_THREAD(beacon_timer_proc, ev, data) {
     PROCESS_END();
   }
 /*----------------------------------------------------------------------------*/
+/** @} */

@@ -36,6 +36,10 @@
 #include "neighbor-table.h"
 #include "packet-creator.h"
 
+#include "dev/sht11/sht11-sensor.h"
+#include "dev/light-sensor.h"
+#include "dev/battery-sensor.h"
+
 #ifndef SDN_WISE_DEBUG
 #define SDN_WISE_DEBUG 0
 #endif
@@ -47,36 +51,37 @@
 #endif
 /*----------------------------------------------------------------------------*/
   LIST(neighbor_table);
-  MEMB(neighbors_memb, neighbor_t, (MAX_PAYLOAD_LENGTH) / (NEIGHBOR_LENGTH));
+  MEMB(neighbors_memb, neighbor_t, (MAX_PAYLOAD_LENGTH - 10) / (NEIGHBOR_LENGTH));
 /*----------------------------------------------------------------------------*/
   static neighbor_t * neighbor_allocate(void);
   static void neighbor_free(neighbor_t *);
   static void print_neighbor(neighbor_t*);
 /*----------------------------------------------------------------------------*/
-  static void 
+  static void
   print_neighbor(neighbor_t* n)
   {
     print_address(&(n->address));
     PRINTF("%d",n->rssi);
+    PRINTF(" %d %d", n->rx_count, n->tx_count);
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   print_neighbor_table(void)
   {
     neighbor_t *n;
     for(n = list_head(neighbor_table); n != NULL; n = n->next) {
       PRINTF("[NGT]: ");
       print_neighbor(n);
-      PRINTF("\n");  
+      PRINTF("\n");
     }
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   purge_neighbor_table(void)
   {
     neighbor_t *n;
     neighbor_t *next;
-
+    // TODO only purge old addresses
     for(n = list_head(neighbor_table); n != NULL;) {
       next = n->next;
       neighbor_free(n);
@@ -99,7 +104,7 @@
   neighbor_free(neighbor_t* n)
   {
     list_remove(neighbor_table, n);
-    int res = memb_free(&neighbors_memb, n); 
+    int res = memb_free(&neighbors_memb, n);
     if (res !=0){
       PRINTF("[NGT]: Failed to free a neighbor. Reference count: %d\n",res);
     }
@@ -118,7 +123,7 @@
     for(tmp = list_head(neighbor_table); tmp != NULL; tmp = tmp->next) {
       if(address_cmp(&(tmp->address),a)){
         return tmp;
-      }  
+      }
     }
     return NULL;
   }
@@ -127,17 +132,19 @@
   add_neighbor(address_t* address, uint8_t rssi)
   {
     neighbor_t* res = neighbor_table_contains(address);
-    if (res == NULL){ 
+    if (res == NULL){
       neighbor_t* n = neighbor_allocate();
       if (n != NULL){
         memset(n, 0, sizeof(*n));
         n->address = *address;
         n->rssi = rssi;
+        n->tx_count = 0;
+        n->rx_count = 0;
         list_add(neighbor_table,n);
-      } 
+      }
     } else {
       res->rssi = rssi;
-    }  
+    }
   }
 /*----------------------------------------------------------------------------*/
   void
@@ -147,26 +154,73 @@
     set_payload_at(p,i,(uint8_t)(list_length(neighbor_table) & 0xFF));
     i++;
     neighbor_t *n;
-    for(n = list_head(neighbor_table); n != NULL; n = n->next) { 
+    for(n = list_head(neighbor_table); n != NULL; n = n->next) {
       uint8_t j = 0;
-      for (j = 0; j < ADDRESS_LENGTH; ++j){ 
+      for (j = 0; j < ADDRESS_LENGTH; ++j){
         set_payload_at(p,i,n->address.u8[j]);
         ++i;
       }
       set_payload_at(p,i,n->rssi);
       ++i;
+      set_payload_at(p,i,n->rx_count);
+      ++i;
+      set_payload_at(p,i,n->tx_count);
+      ++i;
     }
     purge_neighbor_table();
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   neighbor_table_init(void)
   {
     list_init(neighbor_table);
     memb_init(&neighbors_memb);
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  /*
+   * Added by Jakob
+   *
+   * Increments the rx statistics of a neighbor by 1
+   */
+  void
+  rx_count_inc(address_t* address) {
+    neighbor_t* n = neighbor_table_contains(address);
+    if(n != NULL) {
+      n->rx_count++;
+    }
+  }
+/*----------------------------------------------------------------------------*/
+  /*
+   * Added by Jakob
+   *
+   * Increments the tx statistics of a neighbor by 1
+   */
+  void
+  tx_count_inc(address_t* address) {
+    neighbor_t* n = neighbor_table_contains(address);
+    if(n != NULL) {
+      n->tx_count++;
+    }
+  }
+/*----------------------------------------------------------------------------*/
+  /*
+   * Added by Jakob
+   *
+   * reset the rx/tx statistics of all neighbors to 0
+   *
+   * This should be called after the transmission of a REPORT
+   *
+   */
+  void
+  reset_rx_tx_counts(void) {
+    neighbor_t *n;
+    for(n = list_head(neighbor_table); n != NULL; n = n->next) {
+      n->rx_count = 0;
+      n->tx_count = 0;
+    }
+  }
+/*----------------------------------------------------------------------------*/
+  void
   test_neighbor_table(void)
   {
     address_t addr1;

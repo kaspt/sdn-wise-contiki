@@ -51,7 +51,7 @@ typedef enum conf_id{
   RESET_PERIOD,
   RULE_TTL,
   ADD_ALIAS,
-  REM_ALIAS,  
+  REM_ALIAS,
   GET_ALIAS,
   ADD_RULE,
   REM_RULE,
@@ -61,30 +61,30 @@ typedef enum conf_id{
   GET_FUNCTION
 } conf_id_t;
 
-const uint8_t conf_size[RULE_TTL+1] = 
+const uint8_t conf_size[RULE_TTL+1] =
 {
   0,
-  sizeof(conf.my_net),              
-  sizeof(conf.my_address),          
+  sizeof(conf.my_net),
+  sizeof(conf.my_address),
   sizeof(conf.packet_ttl),
   sizeof(conf.rssi_min),
-  sizeof(conf.beacon_period),       
-  sizeof(conf.report_period),  
-  sizeof(conf.reset_period),       
+  sizeof(conf.beacon_period),
+  sizeof(conf.report_period),
+  sizeof(conf.reset_period),
   sizeof(conf.rule_ttl)
 };
 
-const void* conf_ptr[RULE_TTL+1] = 
+const void* conf_ptr[RULE_TTL+1] =
 {
   NULL,
-  &conf.my_net,              
-  &conf.my_address,          
+  &conf.my_net,
+  &conf.my_address,
   &conf.packet_ttl,
   &conf.rssi_min,
-  &conf.beacon_period,       
-  &conf.report_period, 
-  &conf.reset_period,      
-  &conf.rule_ttl,              
+  &conf.beacon_period,
+  &conf.report_period,
+  &conf.reset_period,
+  &conf.rule_ttl,
 };
 
 #define CNF_READ 0
@@ -106,7 +106,7 @@ const void* conf_ptr[RULE_TTL+1] =
   static void handle_open_path(packet_t*);
   static void handle_config(packet_t*);
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   handle_packet(packet_t* p)
   {
     if (p->info.rssi >= conf.rssi_min && p->header.net == conf.my_net){
@@ -141,6 +141,9 @@ const void* conf_ptr[RULE_TTL+1] =
             handle_report(p);
             break;
           }
+          rx_count_inc(&p->header.nxh);
+        } else {
+          PRINTF("dropped packet\n");
         }
       }
     } else {
@@ -177,8 +180,19 @@ const void* conf_ptr[RULE_TTL+1] =
   handle_data(packet_t* p)
   {
     if (is_my_address(&(p->header.dst)))
-    {     
-      PRINTF("[PHD]: Consuming Packet...\n");
+    {
+      PRINTF("[PHD]: Consuming Packet\n");
+#if SINK
+      // TODO might not be needed
+      print_packet_uart(p);
+#else
+      printf("received: ");
+      uint16_t i = 0;
+      for (i=0; i < (p->header.len - PLD_INDEX); ++i){
+        printf("%d ",get_payload_at(p,i));
+      }
+      printf("\n");
+#endif
       packet_deallocate(p);
     } else {
       match_packet(p);
@@ -190,18 +204,18 @@ const void* conf_ptr[RULE_TTL+1] =
   {
 #if SINK
     print_packet_uart(p);
-#else 
-    
+#else
+
     p->header.nxh = conf.nxh_vs_sink;
     rf_unicast_send(p);
-#endif  
+#endif
   }
 /*----------------------------------------------------------------------------*/
   void
   handle_response(packet_t* p)
   {
     if (is_my_address(&(p->header.dst)))
-    {    
+    {
       entry_t* e = get_entry_from_array(p->payload, p->header.len - PLD_INDEX);
       if (e != NULL)
       {
@@ -210,7 +224,7 @@ const void* conf_ptr[RULE_TTL+1] =
       packet_deallocate(p);
     } else {
       match_packet(p);
-    } 
+    }
   }
 /*----------------------------------------------------------------------------*/
   void
@@ -223,7 +237,7 @@ const void* conf_ptr[RULE_TTL+1] =
     int my_index = -1;
     uint8_t my_position = 0;
     uint8_t end = p->header.len - PLD_INDEX;
-    
+
     for (i = start; i < end; i += ADDRESS_LENGTH)
     {
       address_t tmp = get_address_from_array(&(p->payload[i]));
@@ -236,77 +250,82 @@ const void* conf_ptr[RULE_TTL+1] =
     }
 
     if (my_index == -1){
-	printf("[PHD]: Nothing to learn, matching...\n");
-	match_packet(p);
+    	printf("[PHD]: Nothing to learn, matching...\n");
+    	match_packet(p);
     } else {
-    if (my_position > 0)
-    { 
-      uint8_t prev = my_index - ADDRESS_LENGTH;
-      uint8_t first = start;
-      entry_t* e = create_entry();
-      
-      window_t* w = create_window();
-      w->operation = EQUAL;
-      w->size = SIZE_2;
-      w->lhs = DST_INDEX;
-      w->lhs_location = PACKET;
-      w->rhs = MERGE_BYTES(p->payload[first], p->payload[first+1]);
-      w->rhs_location = CONST;
-
-      add_window(e,w);
-      
-      for (i = 0; i<n_windows; ++i)
+      if (my_position > 0)
       {
-        add_window(e, get_window_from_array(&(p->payload[i*WINDOW_SIZE + 1])));
+        uint8_t prev = my_index - ADDRESS_LENGTH;
+        uint8_t first = start;
+        entry_t* e = create_entry();
+
+        window_t* w = create_window();
+        w->operation = EQUAL;
+        w->size = SIZE_2;
+        w->lhs = DST_INDEX;
+        w->lhs_location = PACKET;
+        w->rhs = MERGE_BYTES(p->payload[first], p->payload[first+1]);
+        w->rhs_location = CONST;
+
+        add_window(e,w);
+
+        for (i = 0; i<n_windows; ++i)
+        {
+          add_window(e, get_window_from_array(&(p->payload[i*WINDOW_SIZE + 1])));
+        }
+
+        action_t* a = create_action(FORWARD_U, &(p->payload[prev]), ADDRESS_LENGTH);
+        add_action(e,a);
+
+        PRINTF("[PHD]: ");
+        print_entry(e);
+        PRINTF("\n");
+
+        add_entry(e);
       }
 
-      action_t* a = create_action(FORWARD_U, &(p->payload[prev]), ADDRESS_LENGTH); 
-      add_action(e,a);
-      add_entry(e);
-    }
-   
-    if (my_position < path_len-1)
-    { 
-      uint8_t next = my_index + ADDRESS_LENGTH;
-      uint8_t last = end - ADDRESS_LENGTH;
-      entry_t* e = create_entry();
-
-      window_t* w = create_window();
-      w->operation = EQUAL;
-      w->size = SIZE_2;
-      w->lhs = DST_INDEX;
-      w->lhs_location = PACKET;
-      w->rhs = MERGE_BYTES(p->payload[last], p->payload[last+1]);
-      w->rhs_location = CONST;
-
-      add_window(e,w);
-      
-      for (i = 0; i<n_windows; ++i)
+      if (my_position < path_len-1)
       {
-        add_window(e, get_window_from_array(&(p->payload[i*WINDOW_SIZE + 1])));
+        uint8_t next = my_index + ADDRESS_LENGTH;
+        uint8_t last = end - ADDRESS_LENGTH;
+        entry_t* e = create_entry();
+
+        window_t* w = create_window();
+        w->operation = EQUAL;
+        w->size = SIZE_2;
+        w->lhs = DST_INDEX;
+        w->lhs_location = PACKET;
+        w->rhs = MERGE_BYTES(p->payload[last], p->payload[last+1]);
+        w->rhs_location = CONST;
+
+        add_window(e,w);
+
+        for (i = 0; i<n_windows; ++i)
+        {
+          add_window(e, get_window_from_array(&(p->payload[i*WINDOW_SIZE + 1])));
+        }
+
+        action_t* a = create_action(FORWARD_U, &(p->payload[next]), ADDRESS_LENGTH);
+        add_action(e,a);
+        add_entry(e);
+
+        address_t next_address = get_address_from_array(&(p->payload[next]));
+        p->header.nxh = next_address;
+        p->header.dst = next_address;
+        rf_unicast_send(p);
       }
 
-      action_t* a = create_action(FORWARD_U, &(p->payload[next]), ADDRESS_LENGTH);
-      add_action(e,a);
-      add_entry(e);
-
-      address_t next_address = get_address_from_array(&(p->payload[next]));
-      p->header.nxh = next_address;
-      p->header.dst = next_address;
-      rf_unicast_send(p);
-    }
-
-    if (my_position == path_len-1){
-      packet_deallocate(p);
-    }
-	}
+      if (my_position == path_len-1){
+        packet_deallocate(p);
+      }
+  	}
   }
 /*----------------------------------------------------------------------------*/
   void
   handle_config(packet_t* p)
   {
     if (is_my_address(&(p->header.dst)))
-    {    
+    {
 #if SINK
       if (!is_my_address(&(p->header.src))){
         print_packet_uart(p);
@@ -325,9 +344,9 @@ const void* conf_ptr[RULE_TTL+1] =
           case GET_FUNCTION:
           break;
 
-	  case GET_RULE:
-	    p->header.len += get_array_from_entry_id(&p->payload[i+2],p->payload[i+1]);
-          break;
+      	  case GET_RULE:
+      	    p->header.len += get_array_from_entry_id(&p->payload[i+2],p->payload[i+1]);
+            break;
 
           case MY_NET:
           case MY_ADDRESS:
@@ -336,22 +355,22 @@ const void* conf_ptr[RULE_TTL+1] =
           case BEACON_PERIOD:
           case REPORT_PERIOD:
           case RULE_TTL:
-          // TODO check payload size
-          if (conf_size[id] == 1){
-            memcpy(&(p->payload[i+1]), conf_ptr[id], conf_size[id]);
-          } else if (conf_size[id] == 2) {
-            uint16_t value = *((uint16_t*)conf_ptr[id]);
-            p->payload[i+1] = value >> 8;
-            p->payload[i+2] = value & 0xFF; 
-          }
-	  p->header.len += conf_size[id];
-          break;
+            // TODO check payload size
+            if (conf_size[id] == 1){
+              memcpy(&(p->payload[i+1]), conf_ptr[id], conf_size[id]);
+            } else if (conf_size[id] == 2) {
+              uint16_t value = *((uint16_t*)conf_ptr[id]);
+              p->payload[i+1] = value >> 8;
+              p->payload[i+2] = value & 0xFF;
+            }
+  	        p->header.len += conf_size[id];
+            break;
 
 
           default:
           break;
         }
-        swap_addresses(&(p->header.src),&(p->header.dst));      
+        swap_addresses(&(p->header.src),&(p->header.dst));
 #if !SINK
         match_packet(p);
 #else
@@ -386,7 +405,7 @@ const void* conf_ptr[RULE_TTL+1] =
             memcpy((uint8_t*)conf_ptr[id], &(p->payload[i+1]), conf_size[id]);
           } else if (conf_size[id] == 2) {
             uint16_t h = p->payload[i+1] << 8;
-            uint16_t l = p->payload[i+2];            
+            uint16_t l = p->payload[i+2];
             *((uint16_t*)conf_ptr[id]) = h + l;
           }
           break;
@@ -398,14 +417,14 @@ const void* conf_ptr[RULE_TTL+1] =
       }
 #if SINK
     }
-#endif      
+#endif
     }
     else {
       match_packet(p);
-    }   
+    }
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   test_handle_open_path(void)
   {
     uint8_t array[19] = {

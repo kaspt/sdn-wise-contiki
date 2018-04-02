@@ -11,8 +11,7 @@
 /*************************************************************************/
 #define CFS_ENABLED   0
 #define ELF_ENABLED   0
-#define BATTERY_ENABLED 0
+#define SINK 0
+#define SDN_WISE_DEBUG 0
 /*************************************************************************/
 #endif // PROJECT_CONF_H_
-
-

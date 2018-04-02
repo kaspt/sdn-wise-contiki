@@ -50,7 +50,7 @@
 /*----------------------------------------------------------------------------*/
   static packet_t * packet_allocate(void);
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   print_packet_uart(packet_t* p)
   {
     uint16_t i = 0;
@@ -64,7 +64,7 @@
     packet_deallocate(p);
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   print_packet(packet_t* p)
   {
     uint16_t i = 0;
@@ -92,14 +92,14 @@
   void
   packet_deallocate(packet_t* p)
   {
-    int res = memb_free(&packets_memb, p); 
+    int res = memb_free(&packets_memb, p);
     if (res !=0){
       PRINTF("[FLT]: Failed to deallocate a packet. Reference count: %d\n",res);
     }
   }
 /*----------------------------------------------------------------------------*/
-  packet_t* 
-  create_packet_payload(uint8_t net, address_t* dst, address_t* src, 
+  packet_t*
+  create_packet_payload(uint8_t net, address_t* dst, address_t* src,
     packet_type_t typ, address_t* nxh, uint8_t* payload, uint8_t len)
   {
     packet_t* p = create_packet(net, dst, src, typ, nxh);
@@ -107,13 +107,13 @@
       uint8_t i;
 
       for (i = 0; i < len; ++i){
-        set_payload_at(p, i, payload[i]);  
+        set_payload_at(p, i, payload[i]);
       }
     }
     return p;
   }
 /*----------------------------------------------------------------------------*/
-  packet_t* 
+  packet_t*
   get_packet_from_array(uint8_t* array)
   {
     // TODO fragmentation
@@ -125,7 +125,7 @@
     return p;
   }
 /*----------------------------------------------------------------------------*/
-  uint8_t 
+  uint8_t
   get_payload_at(packet_t* p, uint8_t index)
   {
     if (index < MAX_PACKET_LENGTH){
@@ -135,7 +135,7 @@
     }
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   set_payload_at(packet_t* p, uint8_t index, uint8_t value)
   {
     if (index < MAX_PACKET_LENGTH){
@@ -146,13 +146,13 @@
     }
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   restore_ttl(packet_t* p)
   {
     p->header.ttl = MAX_TTL;
   }
 /*----------------------------------------------------------------------------*/
-  packet_t* 
+  packet_t*
   create_packet_empty(void)
   {
     packet_t* p = packet_allocate();
@@ -160,12 +160,12 @@
       memset(&(p->header), 0, sizeof(p->header));
       memset(&(p->info), 0, sizeof(p->info));
       restore_ttl(p);
-    } 
+    }
     return p;
   }
 /*----------------------------------------------------------------------------*/
-  packet_t* 
-  create_packet(uint8_t net, address_t* dst, address_t* src, packet_type_t typ, 
+  packet_t*
+  create_packet(uint8_t net, address_t* dst, address_t* src, packet_type_t typ,
     address_t* nxh)
   {
     packet_t* p = packet_allocate();
@@ -178,23 +178,23 @@
       p->header.typ=typ;
       p->header.nxh=*nxh;
       restore_ttl(p);
-    } 
+    }
     return p;
   }
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   packet_buffer_init(void)
   {
     memb_init(&packets_memb);
   }
 
 /*----------------------------------------------------------------------------*/
-  void 
+  void
   test_packet_buffer(void)
   {
-    uint8_t array[73] = {1, 73, 0, 0, 0, 2, 4, 100, 0, 0, 20, 18, 0, 6, 0, 10, 
-      18, 0, 50, 0, 1, 90, 0, 10, 0, 1, 122, 0, 12, 0, 5, 1, 4, 8, 6, 2, 0, 10, 
-      0, 40, 0, 0, 8, 5, 1, 0, 0, 0, 0, 0, 0, 1, 3, 3, 2, 255, 255, 3, 1, 0, 3, 
+    uint8_t array[73] = {1, 73, 0, 0, 0, 2, 4, 100, 0, 0, 20, 18, 0, 6, 0, 10,
+      18, 0, 50, 0, 1, 90, 0, 10, 0, 1, 122, 0, 12, 0, 5, 1, 4, 8, 6, 2, 0, 10,
+      0, 40, 0, 0, 8, 5, 1, 0, 0, 0, 0, 0, 0, 1, 3, 3, 2, 255, 255, 3, 1, 0, 3,
       1, 7, 8, 6, 132, 0, 11, 0, 12, 0, 13, 254};
 
       packet_t* second = get_packet_from_array(array);

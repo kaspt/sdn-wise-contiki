@@ -33,12 +33,14 @@
 #include "address.h"
 #include "packet-buffer.h"
 
-#define NEIGHBOR_LENGTH       (ADDRESS_LENGTH + 1)
+#define NEIGHBOR_LENGTH       (ADDRESS_LENGTH + 1 + 2)
 
   typedef struct neighbor_struct {
     struct neighbor_struct *next;
     address_t address;
     uint8_t rssi;
+    uint8_t rx_count;
+    uint8_t tx_count;
   } neighbor_t;
 
   /* Header API. */
@@ -50,5 +52,8 @@
   void test_neighbor_table(void);
   neighbor_t* neighbor_table_contains(address_t*);
   uint8_t neighbor_cmp(neighbor_t*, neighbor_t*);
+  void rx_count_inc(address_t*);
+  void tx_count_inc(address_t*);
+  void reset_rx_tx_counts(void);
 #endif /* NEIGHBOR_TABLE_H_ */
 /** @} */

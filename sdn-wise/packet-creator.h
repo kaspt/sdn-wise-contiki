@@ -35,11 +35,20 @@
 #define REPORT_INIT_INDEX 2
 #define OPEN_PATH_WINDOWS_INDEX 0
 
+#define REPORT_BATT_INDEX 1
+#define REPORT_TEMP_INDEX 2
+#define REPORT_HUMIDITY_INDEX 4
+#define REPORT_LIGHT1_INDEX 6
+#define REPORT_LIGHT2_INDEX 8
+#define REPORT_INIT_INDEX 10
+
+#include "address.h"
 #include "packet-buffer.h"
 
 /* packets API. */
   packet_t* create_beacon(void);
   packet_t* create_data(uint8_t);
+  packet_t* create_data(uint8_t*, uint8_t);
   packet_t* create_report(void);
   packet_t* create_reg_proxy(void);
   void create_and_send_request(packet_t*);
