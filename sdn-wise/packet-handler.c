@@ -115,6 +115,7 @@ const void* conf_ptr[RULE_TTL+1] =
         handle_beacon(p);
       } else {
         if (is_my_address(&(p->header.nxh))){
+          rx_count_inc(&(p->info.sender));
           switch (p->header.typ){
             case DATA:
             PRINTF("[PHD]: Data\n");
@@ -141,7 +142,6 @@ const void* conf_ptr[RULE_TTL+1] =
             handle_report(p);
             break;
           }
-          rx_count_inc(&p->header.nxh);
         } else {
           PRINTF("dropped packet\n");
         }

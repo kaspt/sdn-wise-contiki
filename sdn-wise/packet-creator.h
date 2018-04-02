@@ -32,7 +32,6 @@
 
 #define BEACON_HOPS_INDEX 0
 #define BEACON_BATT_INDEX 1
-#define REPORT_INIT_INDEX 2
 #define OPEN_PATH_WINDOWS_INDEX 0
 
 #define REPORT_BATT_INDEX 1
@@ -47,7 +46,7 @@
 
 /* packets API. */
   packet_t* create_beacon(void);
-  packet_t* create_data(uint8_t);
+  //packet_t* create_data(uint8_t);
   packet_t* create_data(uint8_t*, uint8_t);
   packet_t* create_report(void);
   packet_t* create_reg_proxy(void);

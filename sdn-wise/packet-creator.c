@@ -86,45 +86,45 @@ create_data(uint8_t* payload, uint8_t len)
   return p;
 }
 /*----------------------------------------------------------------------------*/
-create_data(uint8_t count)
-{
-#ifdef X_NUCLEO_IKS01A1
-    int i = 0;
-    uint8_t sensor_values[sizeof(int)*NO_OF_SENSORS];
-    int* sensor_values_ptr = &sensor_values;
-    SENSORS_ACTIVATE(temperature_sensor);
-    SENSORS_ACTIVATE(humidity_sensor);
-    SENSORS_ACTIVATE(pressure_sensor);
-
-    sensor_values_ptr[1] = temperature_sensor.value(0);
-    sensor_values_ptr[2] = humidity_sensor.value(0);
-    sensor_values_ptr[3] = pressure_sensor.value(0);
-
-    SENSORS_DEACTIVATE(temperature_sensor);
-    SENSORS_DEACTIVATE(humidity_sensor);
-    SENSORS_DEACTIVATE(pressure_sensor);
-#endif
-
-  packet_t* p = NULL;
-#if !SINK
-  p = create_packet_empty();
-    if (p != NULL){
-      p->header.net = conf.my_net;
-      p->header.dst = get_address_from_int(5); // Replace 5 with your dst
-      p->header.src = conf.my_address;
-      p->header.typ = DATA;
-      p->header.nxh = conf.nxh_vs_sink;
-#ifdef X_NUCLEO_IKS01A1
-      for (i = 0; i < sizeof(int)*NO_OF_SENSORS; i++){
-        set_payload_at(p, i, sensor_values[i]);
-      }
-#else
-      set_payload_at(p, 0, count);
-#endif
-    }
-#endif
-  return p;
-}
+// create_data(uint8_t count)
+// {
+// #ifdef X_NUCLEO_IKS01A1
+//     int i = 0;
+//     uint8_t sensor_values[sizeof(int)*NO_OF_SENSORS];
+//     int* sensor_values_ptr = &sensor_values;
+//     SENSORS_ACTIVATE(temperature_sensor);
+//     SENSORS_ACTIVATE(humidity_sensor);
+//     SENSORS_ACTIVATE(pressure_sensor);
+//
+//     sensor_values_ptr[1] = temperature_sensor.value(0);
+//     sensor_values_ptr[2] = humidity_sensor.value(0);
+//     sensor_values_ptr[3] = pressure_sensor.value(0);
+//
+//     SENSORS_DEACTIVATE(temperature_sensor);
+//     SENSORS_DEACTIVATE(humidity_sensor);
+//     SENSORS_DEACTIVATE(pressure_sensor);
+// #endif
+//
+//   packet_t* p = NULL;
+// #if !SINK
+//   p = create_packet_empty();
+//     if (p != NULL){
+//       p->header.net = conf.my_net;
+//       p->header.dst = get_address_from_int(5); // Replace 5 with your dst
+//       p->header.src = conf.my_address;
+//       p->header.typ = DATA;
+//       p->header.nxh = conf.nxh_vs_sink;
+// #ifdef X_NUCLEO_IKS01A1
+//       for (i = 0; i < sizeof(int)*NO_OF_SENSORS; i++){
+//         set_payload_at(p, i, sensor_values[i]);
+//       }
+// #else
+//       set_payload_at(p, 0, count);
+// #endif
+//     }
+// #endif
+//   return p;
+// }
 /*----------------------------------------------------------------------------*/
 packet_t*
 create_report(void)
@@ -139,9 +139,12 @@ create_report(void)
 
     set_payload_at(p, BEACON_HOPS_INDEX, conf.hops_from_sink);
 
+    uint16_t sensor_values[NO_OF_SENSORS];
+    SENSORS_ACTIVATE(battery_sensor);
+    SENSORS_ACTIVATE(sht11_sensor);
+    SENSORS_ACTIVATE(light_sensor);
     SENSORS_ACTIVATE(battery_sensor);
     int battery_level = battery_sensor.value(0);
-    uint8_t battery = (battery_level*2500*2)/4096;
     int tmp_battery_usage = (int)(0.41*battery_level - 899);
     uint8_t battery_usage = 0;
     if(tmp_battery_usage > 100) {
@@ -152,38 +155,23 @@ create_report(void)
       battery_usage = (uint8_t)tmp_battery_usage;
     }
     set_payload_at(p, BEACON_BATT_INDEX, (uint8_t)(battery_usage));
-    SENSORS_DEACTIVATE(battery_sensor);
 
-    /*
-     * Added by Jakob
-     * Add sensor Values to report
-     */
-    uint16_t sensor_values[NO_OF_SENSORS];
-    SENSORS_ACTIVATE(sht11_sensor);
-    SENSORS_ACTIVATE(light_sensor);
     sensor_values[0] = sht11_sensor.value(SHT11_SENSOR_TEMP);
     sensor_values[1] = sht11_sensor.value(SHT11_SENSOR_HUMIDITY);
     sensor_values[2] = light_sensor.value(LIGHT_SENSOR_PHOTOSYNTHETIC);
     sensor_values[3] = light_sensor.value(LIGHT_SENSOR_TOTAL_SOLAR);
-    SENSORS_DEACTIVATE(light_sensor);
-    SENSORS_DEACTIVATE(sht11_sensor);
 
-    /*
-     * Added by Jakob
-     * Copy all sensor values to the packet
-     */
     uint8_t i = 0;
     for(i=0; i < 2*NO_OF_SENSORS; i++) {
       set_payload_at(p,i+1+BEACON_BATT_INDEX,((uint8_t *)(&sensor_values))[i]);
     }
 
+    SENSORS_DEACTIVATE(light_sensor);
+    SENSORS_DEACTIVATE(sht11_sensor);
+    SENSORS_DEACTIVATE(battery_sensor);
+
     fill_payload_with_neighbors(p);
-    /*
-     * Added by Jakob
-     * Reset the send statistics
-     */
-    // TODO reset
-    //reset_rx_tx_counts();
+    reset_rx_tx_counts();
   }
   return p;
 }

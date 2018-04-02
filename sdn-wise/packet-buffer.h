@@ -59,6 +59,7 @@
 
   typedef struct __attribute__((__packed__)) packet_info {
     uint8_t rssi;
+    address_t sender;
   } packet_info_t;
 
   typedef struct __attribute__((__packed__)) packet_header {
@@ -84,10 +85,10 @@
   void set_payload_at(packet_t*, uint8_t, uint8_t);
   void restore_ttl(packet_t*);
 
-  packet_t* create_packet(uint8_t, address_t*, address_t*, packet_type_t, 
+  packet_t* create_packet(uint8_t, address_t*, address_t*, packet_type_t,
     address_t*);
   packet_t* create_packet_empty(void);
-  packet_t* create_packet_payload(uint8_t, address_t*, address_t*, packet_type_t, 
+  packet_t* create_packet_payload(uint8_t, address_t*, address_t*, packet_type_t,
     address_t*, uint8_t*, uint8_t);
   void packet_deallocate(packet_t*);
 

@@ -167,7 +167,7 @@
       set_payload_at(p,i,n->tx_count);
       ++i;
     }
-    purge_neighbor_table();
+    //purge_neighbor_table();
   }
 /*----------------------------------------------------------------------------*/
   void

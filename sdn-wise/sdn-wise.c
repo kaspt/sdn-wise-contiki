@@ -72,6 +72,7 @@
 #define RF_SEND_DATA_EVENT    58
 #define NEW_PACKET_EVENT      59
 #define ACTIVATE_EVENT        60
+#define MEASUREMENT_TIMER_EVENT 61
 
 #ifndef SDN_WISE_DEBUG
 #define SDN_WISE_DEBUG 0
@@ -111,8 +112,6 @@
   static packet_t* p;
 #endif
 /*----------------------------------------------------------------------------*/
-  static struct etimer et;
-/*----------------------------------------------------------------------------*/
   void
   rf_unicast_send(packet_t* p)
   {
@@ -143,6 +142,12 @@
     packet_t* p = get_packet_from_array((uint8_t *)packetbuf_dataptr());
     if (p != NULL){
       p->info.rssi = get_packet_rssi(packetbuf_attr(PACKETBUF_ATTR_RSSI));
+
+      // RIME address is Little Endian SDNWise Big Endian. -> swap the endianness
+      int i=0;
+      for(i=0; i<ADDRESS_LENGTH; i++) {
+        p->info.sender.u8[ADDRESS_LENGTH - i - 1] = packetbuf_addr(PACKETBUF_ADDR_SENDER)->u8[i];
+      }
       process_post(&main_proc, RF_U_RECEIVE_EVENT, (process_data_t)p);
     }
   }
@@ -231,7 +236,7 @@
         sensor_values[2] = -4 + 0.0405*rh - 2.8e-6*(rh*rh);
         sensor_values[3] = light_sensor.value(LIGHT_SENSOR_TOTAL_SOLAR);
         sensor_values[4] = battery_sensor.value(0);
-        rf_unicast_send(create_data((uint8_t)sensor_values, sizeof(uint8_t)*NO_OF_SENSORS));
+        rf_unicast_send(create_data((uint8_t*)sensor_values, sizeof(uint8_t)*NO_OF_SENSORS));
 #endif
         break;
         case UART_RECEIVE_EVENT:
@@ -289,6 +294,7 @@
 /*----------------------------------------------------------------------------*/
   PROCESS_THREAD(sensor_read_proc, ev, data) {
     PROCESS_BEGIN();
+    static struct etimer et;
 #if !SINK
     while(1) {
       if (!conf.is_active){
