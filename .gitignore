@@ -33,3 +33,5 @@
 
 # Debug files
 *.dSYM/
+
+obj_sky/*
