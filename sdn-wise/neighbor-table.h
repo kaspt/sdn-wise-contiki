@@ -39,8 +39,8 @@
     struct neighbor_struct *next;
     address_t address;
     uint8_t rssi;
-    uint8_t rx_count;
-    uint8_t tx_count;
+    uint16_t rx_count;
+    uint16_t tx_count;
   } neighbor_t;
 
   /* Header API. */

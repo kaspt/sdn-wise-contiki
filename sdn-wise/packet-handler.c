@@ -182,17 +182,14 @@ const void* conf_ptr[RULE_TTL+1] =
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming Packet\n");
-#if SINK
-      // TODO might not be needed
-      print_packet_uart(p);
-#else
+
       printf("received: ");
       uint16_t i = 0;
       for (i=0; i < (p->header.len - PLD_INDEX); ++i){
         printf("%d ",get_payload_at(p,i));
       }
       printf("\n");
-#endif
+
       packet_deallocate(p);
     } else {
       match_packet(p);

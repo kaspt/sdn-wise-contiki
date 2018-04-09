@@ -54,7 +54,7 @@
 #include "dev/battery-sensor.h"
 #define NO_OF_SENSORS 5
 #endif
-#define MEASUREMENT_INTERVAL 50
+#define MEASUREMENT_INTERVAL 10
 
 #define UART_BUFFER_SIZE      MAX_PACKET_LENGTH
 
@@ -236,7 +236,19 @@
         sensor_values[2] = -4 + 0.0405*rh - 2.8e-6*(rh*rh);
         sensor_values[3] = light_sensor.value(LIGHT_SENSOR_TOTAL_SOLAR);
         sensor_values[4] = battery_sensor.value(0);
-        rf_unicast_send(create_data((uint8_t*)sensor_values, sizeof(uint8_t)*NO_OF_SENSORS));
+        //rf_unicast_send(create_data((uint8_t*)sensor_values, sizeof(uint8_t)*NO_OF_SENSORS));
+        // To debug requests
+
+        address_t dst = get_address_from_int(42);
+        printf("%d.%d\n", dst.u8[0], dst.u8[1]);
+        match_packet(create_packet_payload(
+          conf.my_net,
+          &dst,
+          &conf.my_address,
+          DATA,
+          &conf.nxh_vs_sink,
+          (uint8_t*)sensor_values,
+          sizeof(uint8_t)*NO_OF_SENSORS));
 #endif
         break;
         case UART_RECEIVE_EVENT:
