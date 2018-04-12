@@ -32,12 +32,13 @@
 
 #include <stdint.h>
 #include "address.h"
+#include "project-conf.h"
 
 #define _NET              1
-#define _BEACON_PERIOD    5
-#define _REPORT_PERIOD    10
-#define _RESET_PERIOD     600
-#define _RULE_TTL         100
+#define _BEACON_PERIOD    S_BEACON_PERIOD
+#define _REPORT_PERIOD    S_REPORT_PERIOD
+#define _RESET_PERIOD     S_RESET_PERIOD
+#define _RULE_TTL         S_TTL
 #define _RSSI_MIN         0
 #define _RSSI_MAX         255
 #define _PACKET_TTL       100

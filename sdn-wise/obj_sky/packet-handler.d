@@ -17,7 +17,8 @@ obj_sky/packet-handler.o: packet-handler.c ../contiki/core/./contiki.h \
  ../contiki/core/./sys/energest.h ../contiki/core/./dev/watchdog.h \
  packet-handler.h packet-buffer.h address.h packet-creator.h \
  neighbor-table.h flowtable.h ../contiki/core/./lib/list.h node-conf.h \
- sdn-wise.h ../contiki/core/./lib/memb.h
+ project-conf.h sdn-wise.h ../contiki/core/./lib/memb.h \
+ ../contiki/core/sys/node-id.h statistics.h
 packet-handler.c ../contiki/core/./contiki.h :
  ../contiki/core/./contiki-version.h :
  ../contiki/platform/sky/./contiki-conf.h :
@@ -37,4 +38,5 @@ packet-handler.c ../contiki/core/./contiki.h :
  ../contiki/core/./sys/energest.h ../contiki/core/./dev/watchdog.h :
  packet-handler.h packet-buffer.h address.h packet-creator.h :
  neighbor-table.h flowtable.h ../contiki/core/./lib/list.h node-conf.h :
- sdn-wise.h ../contiki/core/./lib/memb.h :
+ project-conf.h sdn-wise.h ../contiki/core/./lib/memb.h :
+ ../contiki/core/sys/node-id.h statistics.h :

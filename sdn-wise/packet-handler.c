@@ -40,6 +40,12 @@
 #include "node-conf.h"
 #include "sdn-wise.h"
 
+#include "node-id.h"
+
+#include "project-conf.h"
+
+#include "statistics.h"
+
 typedef enum conf_id{
   RESET,
   MY_NET,
@@ -179,19 +185,19 @@ const void* conf_ptr[RULE_TTL+1] =
   void
   handle_data(packet_t* p)
   {
+    static uint8_t hops;
+    hops = get_payload_at(p,0);
+    set_payload_at(p,0,hops + 1);
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming Packet\n");
-
-      printf("received: ");
-      uint16_t i = 0;
-      for (i=0; i < (p->header.len - PLD_INDEX); ++i){
-        printf("%d ",get_payload_at(p,i));
-      }
-      printf("\n");
-
+      printf("RXU: [node: %u, message_id: %u, src: %u, dst: %u, ttl: %u]\n", node_id, 0, p->header.src.u8[1], p->header.dst.u8[1], p->header.ttl);
+      stat.packets_uc_received_as_dst++;
+      stat.hop_sum = stat.hop_sum + get_payload_at(p,0);
+      stat.avg_hop_count = stat.hop_sum/stat.packets_uc_received_as_dst;
       packet_deallocate(p);
     } else {
+      stat.packets_uc_retransmit++;
       match_packet(p);
     }
   }

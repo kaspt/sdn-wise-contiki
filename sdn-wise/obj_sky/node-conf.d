@@ -1,4 +1,4 @@
-obj_sky/node-conf.o: node-conf.c address.h node-conf.h \
+obj_sky/node-conf.o: node-conf.c address.h node-conf.h project-conf.h \
  ../contiki/core/sys/node-id.h ../contiki/core/./net/rime/rime.h \
  ../contiki/core/./net/rime/announcement.h \
  ../contiki/core/./net/linkaddr.h \
@@ -43,7 +43,7 @@ obj_sky/node-conf.o: node-conf.c address.h node-conf.h \
  ../contiki/core/./net/rime/route.h ../contiki/core/./net/rime/rucb.h \
  ../contiki/core/./net/rime/timesynch.h ../contiki/core/./net/mac/mac.h \
  ../contiki/core/./dev/radio.h ../contiki/core/./net/rime/trickle.h
-node-conf.c address.h node-conf.h :
+node-conf.c address.h node-conf.h project-conf.h :
  ../contiki/core/sys/node-id.h ../contiki/core/./net/rime/rime.h :
  ../contiki/core/./net/rime/announcement.h :
  ../contiki/core/./net/linkaddr.h :

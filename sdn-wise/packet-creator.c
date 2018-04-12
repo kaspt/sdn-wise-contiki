@@ -68,6 +68,8 @@ create_beacon(void)
     set_payload_at(p, BEACON_BATT_INDEX, (uint8_t)(battery_level/30));
     SENSORS_DEACTIVATE(battery_sensor);
 
+    // set tree version
+
   }
   return p;
 }
@@ -143,7 +145,6 @@ create_report(void)
     SENSORS_ACTIVATE(battery_sensor);
     SENSORS_ACTIVATE(sht11_sensor);
     SENSORS_ACTIVATE(light_sensor);
-    SENSORS_ACTIVATE(battery_sensor);
     int battery_level = battery_sensor.value(0);
     int tmp_battery_usage = (int)(0.41*battery_level - 899);
     uint8_t battery_usage = 0;
