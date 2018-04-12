@@ -161,26 +161,60 @@ const void* conf_ptr[RULE_TTL+1] =
   handle_beacon(packet_t* p)
   {
     add_neighbor(&(p->header.src),p->info.rssi);
-#if !SINK
-    uint8_t new_hops = get_payload_at(p, BEACON_HOPS_INDEX);
-    uint8_t new_distance = p->info.rssi;
 
-    if (address_cmp(&(conf.nxh_vs_sink), &(p->header.src)) ||
-#if MOBILE
-       (new_distance < conf.distance_from_sink)
-#else
-       (new_hops <= conf.hops_from_sink-1 && new_distance < conf.distance_from_sink)
-#endif
-    )
-    {
+    if(get_payload_at(p, BEACON_TYPE_INDEX) != BEACON_T_TREE) {
+      packet_deallocate(p);
+      return;
+    }
+
+#if !SINK
+    uint8_t tree_version = get_payload_at(p, BEACON_TREE_VERSION_INDEX);
+    uint8_t hops_from_sink = get_payload_at(p, BEACON_DEPTH_INDEX);
+    if(conf.tree_version > tree_version + 2) {
+      conf.tree_version = tree_version;
+      packet_deallocate(p);
+      return;
+    }
+    if(tree_version > conf.tree_version) {
+      // is new tree version
+      conf.tree_version = tree_version;
+      conf.hops_from_sink = hops_from_sink + 1;
       conf.nxh_vs_sink = p->header.src;
-      conf.distance_from_sink = new_distance;
+      conf.distance_from_sink = p->info.rssi;
       conf.sink_address = p->header.nxh;
-      conf.hops_from_sink = new_hops+1;
+      send_updated_tree_message(); // rebroadcast
+    } else if(tree_version == conf.tree_version) {
+      // is current tree
+      if(hops_from_sink + 1 < conf.hops_from_sink) {
+        // is path better parent than current
+        conf.hops_from_sink = hops_from_sink + 1;
+        conf.nxh_vs_sink = p->header.src;
+        conf.distance_from_sink = p->info.rssi;
+        conf.sink_address = p->header.nxh;
+        send_updated_tree_message();
+      }
     }
 #endif
     packet_deallocate(p);
   }
+/*----------------------------------------------------------------------------*/
+void send_updated_tree_message() {
+  packet_t* rebroadcast = create_packet_empty();
+  if (rebroadcast != NULL){
+    rebroadcast->header.net = conf.my_net;
+    set_broadcast_address(&(rebroadcast->header.dst));
+    rebroadcast->header.src = conf.my_address;
+    rebroadcast->header.typ = BEACON;
+    rebroadcast->header.nxh = conf.sink_address;
+    set_payload_at(rebroadcast, BEACON_HOPS_INDEX, conf.hops_from_sink);
+    set_payload_at(rebroadcast, BEACON_BATT_INDEX, 0);
+    set_payload_at(rebroadcast, BEACON_TREE_VERSION_INDEX, conf.tree_version);
+    set_payload_at(rebroadcast, BEACON_DEPTH_INDEX, conf.hops_from_sink);
+    set_payload_at(rebroadcast, BEACON_TYPE_INDEX, BEACON_T_TREE);
+    printf("TREE: [id: %u, depth: %u, next_hop: %u.%u]\n", conf.tree_version, conf.hops_from_sink, conf.nxh_vs_sink.u8[0], conf.nxh_vs_sink.u8[1]);
+    rf_broadcast_send(rebroadcast);
+  }
+}
 /*----------------------------------------------------------------------------*/
   void
   handle_data(packet_t* p)

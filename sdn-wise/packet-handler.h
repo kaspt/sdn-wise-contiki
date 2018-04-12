@@ -35,5 +35,6 @@
 /* Address API. */
 void handle_packet(packet_t*);
 void test_handle_open_path(void);
+void send_updated_tree_message();
 #endif /* PACKET_HANDLER_H_ */
 /** @} */

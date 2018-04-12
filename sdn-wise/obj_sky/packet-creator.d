@@ -18,7 +18,8 @@ obj_sky/packet-creator.o: packet-creator.c \
  ../contiki/core/./sys/energest.h ../contiki/dev/sht11/sht11-sensor.h \
  ../contiki/platform/sky/./dev/light-sensor.h packet-buffer.h address.h \
  packet-creator.h node-conf.h project-conf.h neighbor-table.h sdn-wise.h \
- ../contiki/core/./lib/list.h ../contiki/core/./lib/memb.h
+ ../contiki/core/./lib/list.h ../contiki/core/./lib/memb.h \
+ ../contiki/core/sys/node-id.h
 packet-creator.c :
  ../contiki/core/./dev/battery-sensor.h ../contiki/core/./lib/sensors.h :
  ../contiki/core/./contiki.h ../contiki/core/./contiki-version.h :
@@ -40,3 +41,4 @@ packet-creator.c :
  ../contiki/platform/sky/./dev/light-sensor.h packet-buffer.h address.h :
  packet-creator.h node-conf.h project-conf.h neighbor-table.h sdn-wise.h :
  ../contiki/core/./lib/list.h ../contiki/core/./lib/memb.h :
+ ../contiki/core/sys/node-id.h :

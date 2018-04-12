@@ -39,6 +39,9 @@
 #include "neighbor-table.h"
 #include "sdn-wise.h"
 
+#include "node-id.h"
+
+
 #define NO_OF_SENSORS 4
 
 #ifndef SDN_WISE_DEBUG
@@ -61,15 +64,28 @@ create_beacon(void)
     p->header.typ = BEACON;
     p->header.nxh = conf.sink_address;
 
+
     set_payload_at(p, BEACON_HOPS_INDEX, conf.hops_from_sink);
 
     SENSORS_ACTIVATE(battery_sensor);
     int battery_level = battery_sensor.value(0);
     set_payload_at(p, BEACON_BATT_INDEX, (uint8_t)(battery_level/30));
     SENSORS_DEACTIVATE(battery_sensor);
-
-    // set tree version
-
+#if SINK
+    if(conf.tree_version >= 255) {
+      conf.tree_version = 0;
+    }
+    conf.tree_version++;
+    set_payload_at(p, BEACON_TREE_VERSION_INDEX, conf.tree_version);
+    set_payload_at(p, BEACON_DEPTH_INDEX, conf.hops_from_sink);
+    set_payload_at(p, BEACON_TYPE_INDEX, BEACON_T_TREE);
+  	uint8_t txpower = cc2420_get_txpower();
+    printf("TREE: [id: %u, depth: %u, next_hop: %u.%u]\n", conf.tree_version, conf.hops_from_sink, conf.nxh_vs_sink.u8[0], conf.nxh_vs_sink.u8[1]);
+#else
+    set_payload_at(p, BEACON_TREE_VERSION_INDEX, 0);
+    set_payload_at(p, BEACON_DEPTH_INDEX, 255);
+    set_payload_at(p, BEACON_TYPE_INDEX, BEACON_T_NEIGHBOR);
+#endif
   }
   return p;
 }
@@ -87,46 +103,6 @@ create_data(uint8_t* payload, uint8_t len)
     len);
   return p;
 }
-/*----------------------------------------------------------------------------*/
-// create_data(uint8_t count)
-// {
-// #ifdef X_NUCLEO_IKS01A1
-//     int i = 0;
-//     uint8_t sensor_values[sizeof(int)*NO_OF_SENSORS];
-//     int* sensor_values_ptr = &sensor_values;
-//     SENSORS_ACTIVATE(temperature_sensor);
-//     SENSORS_ACTIVATE(humidity_sensor);
-//     SENSORS_ACTIVATE(pressure_sensor);
-//
-//     sensor_values_ptr[1] = temperature_sensor.value(0);
-//     sensor_values_ptr[2] = humidity_sensor.value(0);
-//     sensor_values_ptr[3] = pressure_sensor.value(0);
-//
-//     SENSORS_DEACTIVATE(temperature_sensor);
-//     SENSORS_DEACTIVATE(humidity_sensor);
-//     SENSORS_DEACTIVATE(pressure_sensor);
-// #endif
-//
-//   packet_t* p = NULL;
-// #if !SINK
-//   p = create_packet_empty();
-//     if (p != NULL){
-//       p->header.net = conf.my_net;
-//       p->header.dst = get_address_from_int(5); // Replace 5 with your dst
-//       p->header.src = conf.my_address;
-//       p->header.typ = DATA;
-//       p->header.nxh = conf.nxh_vs_sink;
-// #ifdef X_NUCLEO_IKS01A1
-//       for (i = 0; i < sizeof(int)*NO_OF_SENSORS; i++){
-//         set_payload_at(p, i, sensor_values[i]);
-//       }
-// #else
-//       set_payload_at(p, 0, count);
-// #endif
-//     }
-// #endif
-//   return p;
-// }
 /*----------------------------------------------------------------------------*/
 packet_t*
 create_report(void)

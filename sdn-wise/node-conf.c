@@ -65,6 +65,7 @@
     conf.rule_ttl = _RULE_TTL;
     conf.rssi_min = _RSSI_MIN;
     conf.packet_ttl = _PACKET_TTL;
+    conf.tree_version = 0;
 #if SINK
     conf.is_active = 1;
     conf.nxh_vs_sink = conf.my_address;

@@ -48,7 +48,6 @@
 #include "packet-creator.h"
 #include "neighbor-table.h"
 #include "node-conf.h"
-
 #include "statistics.h"
 
 #if !SINK
@@ -124,6 +123,7 @@
 static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 31, 29, 28, 6,
 	20, 30, 16, 10, 12, 36, 25, 32, 1, 33, 11, 21, 5, 27, 24, 15, 26, 2, 18, 14, 35, 38, 19, 3,
 	7, 40, 17, 8, 9 };
+
 /*----------------------------------------------------------------------------*/
   uint16_t
   get_destination() {
@@ -255,6 +255,7 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
       // test_packet_buffer();
       // test_address_list();
       //  print_flowtable();
+      //  test_uint8_to_uint16_converter();
         print_node_conf();
         break;
         case MESSAGE_TIMER_EVENT:
@@ -291,9 +292,8 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
         leds_toggle(LEDS_YELLOW);
         if (!conf.is_active){
           conf.is_active = 1;
-          process_post(&beacon_timer_proc, ACTIVATE_EVENT, (process_data_t)NULL);
           process_post(&report_timer_proc, ACTIVATE_EVENT, (process_data_t)NULL);
-          //process_post(&message_proc, ACTIVATE_EVENT, (process_data_t)NULL);
+          process_post(&beacon_timer_proc, ACTIVATE_EVENT, (process_data_t)NULL);
           process_post(&statistics_proc, ACTIVATE_EVENT, (process_data_t)NULL);
         }
         case RF_U_RECEIVE_EVENT:
@@ -452,7 +452,6 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
 /*----------------------------------------------------------------------------*/
   PROCESS_THREAD(beacon_timer_proc, ev, data) {
     static struct etimer et;
-
     PROCESS_BEGIN();
     while(1){
 #if !SINK
@@ -460,7 +459,12 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
         PROCESS_WAIT_EVENT_UNTIL(ev == ACTIVATE_EVENT);
       }
 #endif
+
+#if SINK
+      etimer_set(&et, conf.beacon_period * 4 * CLOCK_SECOND);
+#else
       etimer_set(&et, conf.beacon_period * CLOCK_SECOND);
+#endif
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
       process_post(&main_proc, RF_SEND_BEACON_EVENT, (process_data_t)NULL);
     }

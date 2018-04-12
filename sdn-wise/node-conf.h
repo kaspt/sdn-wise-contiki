@@ -60,6 +60,7 @@
     address_t sink_address;
     uint8_t is_active;
     uint8_t requests_count;
+    uint8_t tree_version;
   } node_conf_t;
 
   extern node_conf_t conf;
