@@ -222,16 +222,17 @@ void send_updated_tree_message() {
     static uint8_t hops;
     hops = get_payload_at(p,0);
     set_payload_at(p,0,hops + 1);
+    stat.packets_uc_received_total++;
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming Packet\n");
-      printf("RXU: [node: %u, message_id: %u, src: %u, dst: %u, ttl: %u]\n", node_id, 0, p->header.src.u8[1], p->header.dst.u8[1], p->header.ttl);
+      printf("RXU: [node: %u, message_id: %u, src: %u, dst: %u, ttl: %u]\n", node_id, 0, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
       stat.packets_uc_received_as_dst++;
       stat.hop_sum = stat.hop_sum + get_payload_at(p,0);
       stat.avg_hop_count = stat.hop_sum/stat.packets_uc_received_as_dst;
       packet_deallocate(p);
     } else {
-      stat.packets_uc_retransmit++;
+      stat.packets_uc_sent_total++;
       match_packet(p);
     }
   }

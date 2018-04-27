@@ -170,7 +170,6 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
       for(i=0; i<ADDRESS_LENGTH; i++) {
         p->info.sender.u8[ADDRESS_LENGTH - i - 1] = packetbuf_addr(PACKETBUF_ADDR_SENDER)->u8[i];
       }
-      stat.packets_uc_received_total++;
       process_post(&main_proc, RF_U_RECEIVE_EVENT, (process_data_t)p);
     }
   }
@@ -264,6 +263,7 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
           p = create_packet_empty();
           if (p != NULL){
             stat.packets_uc_sent_as_src++;
+            stat.packets_uc_sent_total++;
             p->header.net = conf.my_net;
             dst_id = get_destination();
             p->header.dst = get_address_from_int(dst_id); // Replace 5 with your dst
@@ -376,8 +376,6 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
       if (p != NULL){
         p->header.ttl--;
 
-        stat.packets_uc_sent_total++;
-
         PRINTF("[TXU]: ");
         print_packet(p);
         PRINTF("\n");
@@ -461,7 +459,7 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
 #endif
 
 #if SINK
-      etimer_set(&et, conf.beacon_period * 4 * CLOCK_SECOND);
+      etimer_set(&et, conf.beacon_period * 3 * CLOCK_SECOND);
 #else
       etimer_set(&et, conf.beacon_period * CLOCK_SECOND);
 #endif
