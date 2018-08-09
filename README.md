@@ -55,4 +55,3 @@ Our approach is detailed in three scientific contributions:
   url       = {http://ieeexplore.ieee.org/document/7218418/},
 }
 ```
-

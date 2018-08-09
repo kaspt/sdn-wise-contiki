@@ -11,13 +11,13 @@
 /*************************************************************************/
 #define CFS_ENABLED   0
 #define ELF_ENABLED   0
-#define SINK 0
+//#define SINK 0
 #define SDN_WISE_DEBUG 0
 
-#define MULTI 1
+#define MULTI 0
 
-#define SRC 38
-#define DST 17
+#define SRC 3
+#define DST 4
 
 #define S_BEACON_PERIOD 5
 #define S_REPORT_PERIOD 10
@@ -27,8 +27,9 @@
 #define NETWORK_SIZE 40
 
 #define MESSAGE_INTERVAL 10
-#define INITIAL_MESSAGE_DEALAY 300 // wait 5 minutes before sending the first message
+#define INITIAL_MESSAGE_DEALAY 20 // wait 5 minutes before sending the first message
 #define STATISTICS_PRINT_INTERVALL 10
+#define PURGE_FLOWTABLE_INTERVAL 60
 
 /*************************************************************************/
 #endif // PROJECT_CONF_H_

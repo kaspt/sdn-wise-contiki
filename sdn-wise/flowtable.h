@@ -91,7 +91,7 @@
 
   typedef struct byte{
     struct byte *next;
-    uint8_t value; 
+    uint8_t value;
   } byte_t;
 
   typedef struct action{
@@ -115,6 +115,7 @@
 /* FlowTable API. */
   void flowtable_init(void);
   void test_flowtable(void);
+  void purge_flowtable(void);
   entry_t* get_entry_from_array(uint8_t*, uint16_t);
   void print_flowtable(void);
   void print_entry(entry_t*);
