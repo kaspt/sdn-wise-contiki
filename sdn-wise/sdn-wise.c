@@ -75,6 +75,7 @@
 #define ACTIVATE_EVENT        60
 #define MESSAGE_TIMER_EVENT   61
 #define STATISTICS_PRINT_EVENT 62
+#define PURGE_FLOWTABLE_EVENT 63
 
 #ifndef SDN_WISE_DEBUG
 #define SDN_WISE_DEBUG 0
@@ -96,6 +97,7 @@
   PROCESS(report_timer_proc, "Report Timer Process");
   PROCESS(message_proc, "Sensor Read Process");
   PROCESS(statistics_proc, "Statistics Print Process");
+  PROCESS(purge_flowtable_process, "Flowtable Purge Process");
   AUTOSTART_PROCESSES(
     &main_proc,
     &rf_u_send_proc,
@@ -105,7 +107,8 @@
     &report_timer_proc,
     &packet_handler_proc,
     &message_proc,
-    &statistics_proc
+    &statistics_proc,
+    &purge_flowtable_process
     );
 /*----------------------------------------------------------------------------*/
   static uint8_t uart_buffer[UART_BUFFER_SIZE];
@@ -113,6 +116,7 @@
   static uint8_t uart_buffer_expected = 0;
   static uint16_t dst_id;
   static packet_t* p;
+  static uint16_t message_id;
 #if MOBILE
   static uint8_t count=0;
 #endif
@@ -265,18 +269,26 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
             stat.packets_uc_sent_as_src++;
             stat.packets_uc_sent_total++;
             p->header.net = conf.my_net;
-            dst_id = get_destination();
+            if(message_id%2 == 0) {
+              dst_id = 1;//get_destination();
+            } else {
+              dst_id = 4;
+            }
+
             p->header.dst = get_address_from_int(dst_id); // Replace 5 with your dst
             p->header.src = conf.my_address;
             p->header.typ = DATA;
             p->header.nxh = conf.nxh_vs_sink;
-            printf("TXU: [node: %u, message_id: %u, src: %u, dst: %u, ttl: %u]\n", node_id, 0, node_id, dst_id, S_TTL);
-
             set_payload_at(p, 0, 0);
+            set_payload_at(p, 1, message_id);
+            printf("TXU: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, node_id,message_id++, node_id, dst_id, S_TTL);
             match_packet(p);
           }
         }
 #endif
+        break;
+        case PURGE_FLOWTABLE_EVENT:
+          purge_flowtable();
         break;
         case STATISTICS_PRINT_EVENT:
           printf("id: %u, avg #hops: %u, tx uc total: %u, tx uc src: %u, tx bc: %u, rx uc total: %u, rx uc dst: %u, rx bc: %u\n",
@@ -295,6 +307,7 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
           process_post(&report_timer_proc, ACTIVATE_EVENT, (process_data_t)NULL);
           process_post(&beacon_timer_proc, ACTIVATE_EVENT, (process_data_t)NULL);
           process_post(&statistics_proc, ACTIVATE_EVENT, (process_data_t)NULL);
+          process_post(&purge_flowtable_process, ACTIVATE_EVENT, (process_data_t)NULL);
         }
         case RF_U_RECEIVE_EVENT:
         process_post(&packet_handler_proc, NEW_PACKET_EVENT, (process_data_t)data);
@@ -303,7 +316,6 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
         case RF_SEND_BEACON_EVENT:
         rf_broadcast_send(create_beacon());
         break;
-
         case RF_SEND_REPORT_EVENT:
         rf_unicast_send(create_report());
 #if !SINK
@@ -343,6 +355,22 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
       etimer_set(&et, STATISTICS_PRINT_INTERVALL * CLOCK_SECOND);
       PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
       process_post(&main_proc, STATISTICS_PRINT_EVENT, (process_data_t)NULL);
+    }
+#endif
+    PROCESS_END();
+  }
+/*----------------------------------------------------------------------------*/
+  PROCESS_THREAD(purge_flowtable_process, ev, data) {
+    PROCESS_BEGIN();
+    static struct etimer et;
+#if !SINK
+    while(1) {
+      if (!conf.is_active){
+        PROCESS_WAIT_EVENT_UNTIL(ev == ACTIVATE_EVENT);
+      }
+      etimer_set(&et, PURGE_FLOWTABLE_INTERVAL * CLOCK_SECOND);
+      PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+      process_post(&main_proc, PURGE_FLOWTABLE_EVENT, (process_data_t)NULL);
     }
 #endif
     PROCESS_END();

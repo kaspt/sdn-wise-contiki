@@ -220,19 +220,23 @@ void send_updated_tree_message() {
   handle_data(packet_t* p)
   {
     static uint8_t hops;
+    static uint8_t message_id;
     hops = get_payload_at(p,0);
+    message_id = get_payload_at(p,1);
+
     set_payload_at(p,0,hops + 1);
     stat.packets_uc_received_total++;
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming Packet\n");
-      printf("RXU: [node: %u, message_id: %u, src: %u, dst: %u, ttl: %u]\n", node_id, 0, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
+      printf("RXU: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
       stat.packets_uc_received_as_dst++;
       stat.hop_sum = stat.hop_sum + get_payload_at(p,0);
       stat.avg_hop_count = stat.hop_sum/stat.packets_uc_received_as_dst;
       packet_deallocate(p);
     } else {
       stat.packets_uc_sent_total++;
+      printf("RXU: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
       match_packet(p);
     }
   }
@@ -269,12 +273,12 @@ void send_updated_tree_message() {
   handle_open_path(packet_t* p)
   {
     int i;
-    uint8_t n_windows = get_payload_at(p,OPEN_PATH_WINDOWS_INDEX);
-    uint8_t start = n_windows*WINDOW_SIZE + 1;
-    uint8_t path_len = (p->header.len - (start + PLD_INDEX))/ADDRESS_LENGTH;
+    uint8_t n_windows = get_payload_at(p,OPEN_PATH_WINDOWS_INDEX); //2
+    uint8_t start = n_windows*WINDOW_SIZE + 1; //2*5+1 = 11
+    uint8_t path_len = (p->header.len - (start + PLD_INDEX))/ADDRESS_LENGTH; // (33 - (11 + (8+2)))/2 = 6
     int my_index = -1;
     uint8_t my_position = 0;
-    uint8_t end = p->header.len - PLD_INDEX;
+    uint8_t end = p->header.len - PLD_INDEX; // 33 - 10 = 23
 
     for (i = start; i < end; i += ADDRESS_LENGTH)
     {
