@@ -250,12 +250,12 @@ void send_updated_tree_message() {
   void 
   handle_web_req(packet_t *p)
   {
+    static uint8_t message_id;
+    message_id = get_payload_at(p, 0);
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming Packet\n");
-      static uint8_t message_id;
-      message_id = get_payload_at(p, 0);
-
+    
       printf("WEB: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n",
             node_id, p->header.src.u8[1], message_id,
             p->header.src.u8[1], p->header.dst.u8[1],
