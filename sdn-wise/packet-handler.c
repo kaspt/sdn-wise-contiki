@@ -111,6 +111,7 @@ const void* conf_ptr[RULE_TTL+1] =
   static void handle_response(packet_t*);
   static void handle_open_path(packet_t*);
   static void handle_config(packet_t*);
+  static void handle_web_req(packet_t*);
 /*----------------------------------------------------------------------------*/
   void
   handle_packet(packet_t* p)
@@ -141,6 +142,11 @@ const void* conf_ptr[RULE_TTL+1] =
             case CONFIG:
             PRINTF("[PHD]: Config\n");
             handle_config(p);
+            break;
+
+            case WEB_REQ:
+            PRINTF("[PHD]: Web req\n");
+            handle_web_req(p);
             break;
 
             default:
@@ -240,6 +246,29 @@ void send_updated_tree_message() {
       match_packet(p);
     }
   }
+/*----------------------------------------------------------------------------*/
+  void 
+  handle_web_req(packet_t *p)
+  {
+    if (is_my_address(&(p->header.dst)))
+    {
+      PRINTF("[PHD]: Consuming Packet\n");
+      static uint8_t message_id;
+      message_id = get_payload_at(p, 0);
+
+      printf("WEB: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n",
+            node_id, p->header.src.u8[1], message_id,
+            p->header.src.u8[1], p->header.dst.u8[1],
+            S_TTL - get_payload_at(p, 0));
+
+      packet_deallocate(p);
+    }
+    else
+    {
+      printf("FWD: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL - get_payload_at(p, 0));
+      match_packet(p);
+    }
+}
 /*----------------------------------------------------------------------------*/
   void
   handle_report(packet_t* p)
