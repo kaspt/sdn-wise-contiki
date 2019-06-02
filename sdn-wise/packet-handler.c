@@ -123,7 +123,8 @@ const void* conf_ptr[RULE_TTL+1] =
       } else {
         if (is_my_address(&(p->header.nxh))){
           rx_count_inc(&(p->info.sender));
-          printf("packet: [ ... ]");
+          printf("packet: typ:%u_[payload:%u]\n", p->header.typ, get_payload_at(p,0));
+
           switch (p->header.typ){
             case DATA:
             PRINTF("[PHD]: Data\n");
