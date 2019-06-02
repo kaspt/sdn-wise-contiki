@@ -37,3 +37,7 @@
 obj_sky/*
 
 sdn-wise/\.vscode/
+
+sdnwise-kaspt\.code-workspace
+
+\.vscode/
