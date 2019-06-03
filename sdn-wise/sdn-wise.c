@@ -263,6 +263,7 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
         break;
         case MESSAGE_TIMER_EVENT:
 #if !SINK
+/*
         if((node_id == SRC) || MULTI == 1) {
           p = create_packet_empty();
           if (p != NULL){
@@ -285,6 +286,7 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
             match_packet(p);
           }
         }
+        */
 #endif
         break;
         case PURGE_FLOWTABLE_EVENT:
