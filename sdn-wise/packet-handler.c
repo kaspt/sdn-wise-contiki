@@ -280,7 +280,7 @@ void send_updated_tree_message() {
   {
     static uint8_t message_id;
     message_id = get_payload_at(p, 0);
-    printf("==>typ:%u [", p->header.typ);
+    printf("WEB:[");
     uint16_t i=0;
     for (i=0; i < (p->header.len - PLD_INDEX); ++i){
       printf("%d ",get_payload_at(p,i));
@@ -289,13 +289,11 @@ void send_updated_tree_message() {
 
     if (is_my_address(&(p->header.dst)))
     {
-      PRINTF("[PHD]: Consuming Packet\n");
-    
+      PRINTF("[PHD]: Consuming Packet\n");    
       printf("WEB: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n",
             node_id, p->header.src.u8[1], message_id,
             p->header.src.u8[1], p->header.dst.u8[1],
             S_TTL - get_payload_at(p, 0));
-
       packet_deallocate(p);
     }
     else
