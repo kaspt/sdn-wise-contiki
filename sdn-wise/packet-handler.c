@@ -166,7 +166,6 @@ const void* conf_ptr[RULE_TTL+1] =
           temp_print_address(&(p->header.nxh));
           printf("typ:%d\n[", p->header.typ);
 
-           uint16_t i=0;
           for (i=0; i < (p->header.len - PLD_INDEX); ++i){
             printf("%d ",get_payload_at(p,i));
           }
