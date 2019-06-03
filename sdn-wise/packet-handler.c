@@ -100,9 +100,10 @@ const void* conf_ptr[RULE_TTL+1] =
 #define SDN_WISE_DEBUG 0
 #endif
 #if SDN_WISE_DEBUG
-#define PRINTF(...) printf(__VA_ARGS__)
+//#define PRINTF(...) printf(__VA_ARGS__)
+#define PRINTF printf
 #else
-#define PRINTF(...)
+#define PRINTF(...) 
 #endif
 /*----------------------------------------------------------------------------*/
   static void handle_beacon(packet_t*);
@@ -157,7 +158,14 @@ const void* conf_ptr[RULE_TTL+1] =
           }
         } else {
           printf("webtyp:%u", WEB_REQ);
-          printf("typ:%d [", p->header.typ);
+          uint16_t i = 0;
+          printf("net:%d len%d ", p->header.net, p->header.len);
+          temp_print_address(&(p->header.dst));
+          temp_print_address(&(p->header.src));
+          printf("%d %d ", p->header.typ, p->header.ttl);
+          temp_print_address(&(p->header.nxh));
+          printf("typ:%d\n[", p->header.typ);
+
            uint16_t i=0;
           for (i=0; i < (p->header.len - PLD_INDEX); ++i){
             printf("%d ",get_payload_at(p,i));
@@ -169,6 +177,16 @@ const void* conf_ptr[RULE_TTL+1] =
     } else {
       packet_deallocate(p);
     }
+  }
+
+  void 
+  temp_print_address(address_t* a)
+  {
+    uint16_t i = 0;
+    for (i=0;i<ADDRESS_LENGTH-1;++i){
+      printf("%d.",a->u8[i]);
+    }
+    printf("%d ",a->u8[i]);
   }
 /*----------------------------------------------------------------------------*/
   void
