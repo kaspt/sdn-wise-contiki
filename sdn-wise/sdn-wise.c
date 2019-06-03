@@ -78,7 +78,7 @@
 #define PURGE_FLOWTABLE_EVENT 63
 
 #ifndef SDN_WISE_DEBUG
-#define SDN_WISE_DEBUG 0
+#define SDN_WISE_DEBUG 1
 #endif
 #if SDN_WISE_DEBUG
 #include <stdio.h>
