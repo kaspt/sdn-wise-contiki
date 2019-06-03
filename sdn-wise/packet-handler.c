@@ -156,7 +156,7 @@ const void* conf_ptr[RULE_TTL+1] =
             break;
           }
         } else {
-          PRINTF("dropped packet\n");
+          printf("dropped packet\n");
         }
       }
     } else {
