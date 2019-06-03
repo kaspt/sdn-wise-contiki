@@ -124,14 +124,6 @@ const void* conf_ptr[RULE_TTL+1] =
         if (is_my_address(&(p->header.nxh))){
           rx_count_inc(&(p->info.sender));
           
-          printf("==>typ:%u [", p->header.typ);
-          for (uint16_t i=0; i < (p->header.len - PLD_INDEX); ++i){
-            printf("%d ",get_payload_at(p,i));
-          }
-          printf("]\n");
-
-
-
           switch (p->header.typ){
             case DATA:
             PRINTF("[PHD]: Data\n");
@@ -240,9 +232,9 @@ void send_updated_tree_message() {
     
     message_id = get_payload_at(p,1);
 
-    set_payload_at(p,0,hops + 1);
+    //set_payload_at(p,0,hops + 1);
     stat.packets_uc_received_total++;
-    printf("-->DATA: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", 
+    printf("DATA: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", 
     node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
     if (is_my_address(&(p->header.dst)))
     {
@@ -264,6 +256,13 @@ void send_updated_tree_message() {
   {
     static uint8_t message_id;
     message_id = get_payload_at(p, 0);
+    printf("==>typ:%u [", p->header.typ);
+    uint16_t i=0;
+    for (i=0; i < (p->header.len - PLD_INDEX); ++i){
+      printf("%d ",get_payload_at(p,i));
+    }
+    printf("]\n");
+
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming Packet\n");
