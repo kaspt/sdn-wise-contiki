@@ -156,6 +156,12 @@ const void* conf_ptr[RULE_TTL+1] =
             break;
           }
         } else {
+          printf("typ:%d", p->header.typ);
+           uint16_t i=0;
+          for (i=0; i < (p->header.len - PLD_INDEX); ++i){
+            printf("%d ",get_payload_at(p,i));
+          }
+          printf("]\n");
           printf("dropped packet\n");
         }
       }
