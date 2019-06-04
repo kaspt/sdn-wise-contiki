@@ -256,13 +256,6 @@ void send_updated_tree_message() {
   {
     static uint8_t message_id;
     message_id = get_payload_at(p, 0);
-    printf("WEB:[");
-    uint16_t i=0;
-    for (i=0; i < (p->header.len - PLD_INDEX); ++i){
-      printf("%d ",get_payload_at(p,i));
-    }
-    printf("]\n");
-
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming WEB Packet\n");    
@@ -270,10 +263,15 @@ void send_updated_tree_message() {
             node_id, p->header.src.u8[1], message_id,
             p->header.src.u8[1], p->header.dst.u8[1],
             S_TTL - get_payload_at(p, 0));
-
 #if SINK
       PRINTF("[WEB SINK]");
+      p->header.dst = p->header.src;
+      p->header.src = conf.my_address;
+      p->header.nxh = conf.nxh_vs_sink;
+      set_payload_at(p, 1, 6 );
+      set_payload_at(p, 2, 6);
       print_packet_uart(p);
+      packet_deallocate(p);
 #else
       p->header.dst = p->header.src;
       p->header.src = conf.my_address;
@@ -281,15 +279,19 @@ void send_updated_tree_message() {
       PRINTF("p-len:%u\n", p->header.len);
       set_payload_at(p, 1, 5 );
       set_payload_at(p, 2, 5 );
-      
       match_packet(p);
 #endif
       //packet_deallocate(p);
-
     }
     else
     {
-      printf("[FWD]: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL - get_payload_at(p, 0));
+      printf("FWD WEB:");
+      print_packet(p);
+      uint16_t i=0;
+      for (i=0; i < (p->header.len - PLD_INDEX); ++i){
+        PRINTF("%d ",get_payload_at(p,i));
+      }
+      PRINTF("]\n");
       match_packet(p);
     }
 }
