@@ -270,7 +270,11 @@ void send_updated_tree_message() {
             node_id, p->header.src.u8[1], message_id,
             p->header.src.u8[1], p->header.dst.u8[1],
             S_TTL - get_payload_at(p, 0));
-      
+
+#if SINK
+      PRINTF("[WEB SINK]");
+      print_packet_uart(p);
+#else
       p->header.dst = p->header.src;
       p->header.src = conf.my_address;
       p->header.nxh = conf.nxh_vs_sink;
@@ -279,13 +283,13 @@ void send_updated_tree_message() {
       set_payload_at(p, 2, 5 );
       
       match_packet(p);
-
+#endif
       //packet_deallocate(p);
 
     }
     else
     {
-      printf("FWD: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL - get_payload_at(p, 0));
+      printf("[FWD]: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL - get_payload_at(p, 0));
       match_packet(p);
     }
 }
