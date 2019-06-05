@@ -117,13 +117,18 @@ const void* conf_ptr[RULE_TTL+1] =
   handle_packet(packet_t* p)
   {
     if (p->info.rssi >= conf.rssi_min && p->header.net == conf.my_net){
+      if(p->header.ttl == 0){
+        printf("packet droped ttl==0");
+        packet_deallocate(p);
+        return;
+      }   
       if (p->header.typ == BEACON){
         PRINTF("[PHD]: Beacon\n");
         handle_beacon(p);
       } else {
         if (is_my_address(&(p->header.nxh))){
           rx_count_inc(&(p->info.sender));
-          
+              
           switch (p->header.typ){
             case DATA:
             PRINTF("[PHD]: Data\n");
@@ -231,6 +236,7 @@ void send_updated_tree_message() {
     hops = get_payload_at(p,0);
     
     message_id = get_payload_at(p,1);
+    
 
     //set_payload_at(p,0,hops + 1);
     stat.packets_uc_received_total++;
@@ -256,10 +262,41 @@ void send_updated_tree_message() {
   {
     static uint8_t message_id;
     message_id = get_payload_at(p, 0);
+    
     if (is_my_address(&(p->header.dst)))
     {
-      PRINTF("[PHD]: Consuming WEB Packet\n"); 
+      PRINTF("[WEB]: Consuming WEB Packet\n"); 
       print_packet(p);   
+      PRINTF("\n");
+#if SINK
+      if (!is_my_address(&(p->header.src))){
+        print_packet_uart(p);
+      } else {
+#endif
+    swap_addresses(&(p->header.src),&(p->header.dst));
+    // do action
+    PRINTF("WEB set answer parameter");
+    set_payload_at(p, 1, conf.my_address.u8[0]);
+    set_payload_at(p, 2, conf.my_address.u8[1]);
+
+    print_packet(p);  
+
+#if !SINK
+    match_packet(p);
+#else
+	    print_packet_uart(p);
+#endif
+#if SINK
+    }
+#endif
+    }else
+    {
+      PRINTF("FWD WEB:");
+      print_packet(p);
+      PRINTF("\n");
+      match_packet(p);
+    }
+/*      
 #if SINK
       if(address_cmp(&(p->header.dst), &(p->header.src))>0){
         PRINTF("[SINK is dest]");
@@ -277,6 +314,7 @@ void send_updated_tree_message() {
         packet_deallocate(p);
       }     
 #else
+      swap_addresses(&(p->header.src),&(p->header.dst));
       p->header.dst = p->header.src;
       p->header.src = conf.my_address;
       p->header.nxh = conf.nxh_vs_sink;
@@ -297,7 +335,7 @@ void send_updated_tree_message() {
       }
       PRINTF("]\n");
       match_packet(p);
-    }
+    }*/
 }
 /*----------------------------------------------------------------------------*/
   void

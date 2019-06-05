@@ -78,7 +78,7 @@
 #define PURGE_FLOWTABLE_EVENT 63
 
 #ifndef SDN_WISE_DEBUG
-#define SDN_WISE_DEBUG 1
+#define SDN_WISE_DEBUG 0
 #endif
 #if SDN_WISE_DEBUG
 #include <stdio.h>
@@ -259,7 +259,7 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
       // test_address_list();
       //  print_flowtable();
       //  test_uint8_to_uint16_converter();
-        print_node_conf();
+      //  print_node_conf();
         break;
         case MESSAGE_TIMER_EVENT:
 #if !SINK

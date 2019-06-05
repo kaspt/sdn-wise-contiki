@@ -41,3 +41,7 @@ sdn-wise/\.vscode/
 sdnwise-kaspt\.code-workspace
 
 \.vscode/
+
+cmake-build-debug/CMakeFiles/clion-log\.txt
+
+\.idea/
