@@ -258,20 +258,24 @@ void send_updated_tree_message() {
     message_id = get_payload_at(p, 0);
     if (is_my_address(&(p->header.dst)))
     {
-      PRINTF("[PHD]: Consuming WEB Packet\n");    
-      printf("WEB: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n",
-            node_id, p->header.src.u8[1], message_id,
-            p->header.src.u8[1], p->header.dst.u8[1],
-            S_TTL - get_payload_at(p, 0));
+      PRINTF("[PHD]: Consuming WEB Packet\n"); 
+      print_packet(p);   
 #if SINK
-      PRINTF("[WEB SINK]");
-      p->header.dst = p->header.src;
-      p->header.src = conf.my_address;
-      p->header.nxh = conf.nxh_vs_sink;
-      set_payload_at(p, 1, 6 );
-      set_payload_at(p, 2, 6);
-      print_packet_uart(p);
-      packet_deallocate(p);
+      if(address_cmp(&(p->header.dst), &(p->header.src))>0){
+        PRINTF("[SINK is dest]");
+        p->header.dst = p->header.src;
+        p->header.src = conf.my_address;
+        p->header.nxh = conf.nxh_vs_sink;
+        set_payload_at(p, 1, 6 );
+        set_payload_at(p, 2, 6);
+        print_packet_uart(p);
+        packet_deallocate(p);
+      }else
+      {
+        PRINTF("[SINK get answer]");
+        print_packet_uart(p);
+        packet_deallocate(p);
+      }     
 #else
       p->header.dst = p->header.src;
       p->header.src = conf.my_address;
@@ -279,9 +283,9 @@ void send_updated_tree_message() {
       PRINTF("p-len:%u\n", p->header.len);
       set_payload_at(p, 1, 5 );
       set_payload_at(p, 2, 5 );
+      print_packet(p);
       match_packet(p);
 #endif
-      //packet_deallocate(p);
     }
     else
     {
