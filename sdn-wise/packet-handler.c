@@ -262,12 +262,12 @@ void send_updated_tree_message() {
   {
     static uint8_t message_id;
     message_id = get_payload_at(p, 0);
-    
+    PRINTF("[WEB]: handle WEB Packet\n"); 
+    print_packet(p);   
+    PRINTF("\n");
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[WEB]: Consuming WEB Packet\n"); 
-      print_packet(p);   
-      PRINTF("\n");
 #if SINK
       if (!is_my_address(&(p->header.src))){
         print_packet_uart(p);
@@ -275,11 +275,11 @@ void send_updated_tree_message() {
 #endif
     swap_addresses(&(p->header.src),&(p->header.dst));
     // do action
-    PRINTF("WEB set answer parameter");
+    PRINTF("WEB set answer parameter..");
     set_payload_at(p, 1, conf.my_address.u8[0]);
     set_payload_at(p, 2, conf.my_address.u8[1]);
-
     print_packet(p);  
+    PRINTF("\n");
 
 #if !SINK
     match_packet(p);
