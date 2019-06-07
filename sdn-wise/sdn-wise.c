@@ -298,6 +298,9 @@ static const uint8_t destinations[NETWORK_SIZE] = { 22, 23, 39, 34, 4, 37, 13, 3
         break;
         case UART_RECEIVE_EVENT:
         leds_toggle(LEDS_GREEN);
+        PRINTF("UART_RECEIVE_EVENT:");
+        packet_t* p = (packet_t*)data;
+        print_packet(p);
         process_post(&packet_handler_proc, NEW_PACKET_EVENT, (process_data_t)data);
         break;
         case RF_B_RECEIVE_EVENT:
