@@ -269,20 +269,18 @@ void send_updated_tree_message() {
     {
       PRINTF("[WEB]: Consuming WEB Packet\n"); 
 #if SINK
+// handle the responce from an other node
       if (!is_my_address(&(p->header.src))){
         print_packet_uart(p);
       } else {
 #endif
-    swap_addresses(&(p->header.src),&(p->header.dst));
-    // do action
-    PRINTF("WEB set answer parameter..");
-    set_payload_at(p, 1, conf.my_address.u8[0]);
-    set_payload_at(p, 2, conf.my_address.u8[1]);
-    print_packet(p);  
-    PRINTF("\n");
-
+      swap_addresses(&(p->header.src),&(p->header.dst));
+      // do action
+      PRINTF("[WEB] set answer parameter\n");
+      set_payload_at(p, 1, conf.my_address.u8[0]);
+      set_payload_at(p, 2, conf.my_address.u8[1]);
 #if !SINK
-    match_packet(p);
+      match_packet(p);
 #else
 	    print_packet_uart(p);
 #endif
@@ -296,46 +294,6 @@ void send_updated_tree_message() {
       PRINTF("\n");
       match_packet(p);
     }
-/*      
-#if SINK
-      if(address_cmp(&(p->header.dst), &(p->header.src))>0){
-        PRINTF("[SINK is dest]");
-        p->header.dst = p->header.src;
-        p->header.src = conf.my_address;
-        p->header.nxh = conf.nxh_vs_sink;
-        set_payload_at(p, 1, 6 );
-        set_payload_at(p, 2, 6);
-        print_packet_uart(p);
-        packet_deallocate(p);
-      }else
-      {
-        PRINTF("[SINK get answer]");
-        print_packet_uart(p);
-        packet_deallocate(p);
-      }     
-#else
-      swap_addresses(&(p->header.src),&(p->header.dst));
-      p->header.dst = p->header.src;
-      p->header.src = conf.my_address;
-      p->header.nxh = conf.nxh_vs_sink;
-      PRINTF("p-len:%u\n", p->header.len);
-      set_payload_at(p, 1, 5 );
-      set_payload_at(p, 2, 5 );
-      print_packet(p);
-      match_packet(p);
-#endif
-    }
-    else
-    {
-      printf("FWD WEB:");
-      print_packet(p);
-      uint16_t i=0;
-      for (i=0; i < (p->header.len - PLD_INDEX); ++i){
-        PRINTF("%d ",get_payload_at(p,i));
-      }
-      PRINTF("]\n");
-      match_packet(p);
-    }*/
 }
 /*----------------------------------------------------------------------------*/
   void
