@@ -12,7 +12,7 @@
 #define CFS_ENABLED   0
 #define ELF_ENABLED   0
 //#define SINK 0
-#define SDN_WISE_DEBUG 1
+#define SDN_WISE_DEBUG 0
 
 #define MULTI 0
 

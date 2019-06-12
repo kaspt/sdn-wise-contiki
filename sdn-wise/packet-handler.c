@@ -245,14 +245,14 @@ void send_updated_tree_message() {
     if (is_my_address(&(p->header.dst)))
     {
       PRINTF("[PHD]: Consuming Packet\n");
-      printf("RXU: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
+      PRINTF("RXU: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
       stat.packets_uc_received_as_dst++;
       stat.hop_sum = stat.hop_sum + get_payload_at(p,0);
       stat.avg_hop_count = stat.hop_sum/stat.packets_uc_received_as_dst;
       packet_deallocate(p);
     } else {
       stat.packets_uc_sent_total++;
-      printf("RXU: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
+      PRINTF("RXU: [node: %u, message_id: %u.%u, src: %u, dst: %u, ttl: %u]\n", node_id, p->header.src.u8[1], message_id, p->header.src.u8[1], p->header.dst.u8[1], S_TTL- get_payload_at(p,0));
       match_packet(p);
     }
   }
@@ -267,7 +267,7 @@ void send_updated_tree_message() {
     PRINTF("\n");
     if (is_my_address(&(p->header.dst)))
     {
-      PRINTF("[WEB]: Consuming WEB Packet\n"); 
+      printf("[WEB]: Consuming WEB Packet\n"); 
 #if SINK
 // handle the responce from an other node
       if (!is_my_address(&(p->header.src))){
