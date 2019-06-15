@@ -39,6 +39,7 @@
 #include "flowtable.h"
 #include "node-conf.h"
 #include "sdn-wise.h"
+#include "dev/leds.h"
 
 #include "node-id.h"
 
@@ -263,6 +264,18 @@ void send_updated_tree_message() {
     static uint8_t message_id;
     message_id = get_payload_at(p, 0);
     PRINTF("[WEB]: handle WEB Packet\n"); 
+
+    uint16_t i = 0;
+    printf("%d %d ", p->header.net, p->header.len);
+    print_address(&(p->header.dst));
+    print_address(&(p->header.src));
+    printf("%d %d ", p->header.typ, p->header.ttl);
+    print_address(&(p->header.nxh));
+    for (i=0; i < (p->header.len - PLD_INDEX); ++i){
+      printf("%d ",get_payload_at(p,i));
+    }
+  
+
     print_packet(p);   
     PRINTF("\n");
     if (is_my_address(&(p->header.dst)))
@@ -276,10 +289,12 @@ void send_updated_tree_message() {
 #endif
       swap_addresses(&(p->header.src),&(p->header.dst));
       // do action
+      leds_set(LEDS_GREEN);
       PRINTF("[WEB] set answer parameter\n");
       set_payload_at(p, 1, conf.my_address.u8[0]);
       set_payload_at(p, 2, conf.my_address.u8[1]);
 #if !SINK
+      p->header.nxh = conf.nxh_vs_sink;
       match_packet(p);
 #else
 	    print_packet_uart(p);
